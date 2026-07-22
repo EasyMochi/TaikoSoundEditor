@@ -16,9 +16,11 @@ namespace TaikoSoundEditor
             InitializeSongDeletionMenu();
             InitializeAdvancedMetadataMenu();
             InitializeProjectAwareImporter();
+            InitializeProjectRepairsMenu();
             RefreshCategoryEditorState();
             RefreshSongDeletionState();
             RefreshAdvancedMetadataState();
+            RefreshProjectRepairsState();
         }
 
         private void InitializeCategoryEditorMenu()
