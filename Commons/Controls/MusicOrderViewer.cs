@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
 using TaikoSoundEditor.Data;
 using TaikoSoundEditor.Commons.Extensions;
@@ -11,7 +12,6 @@ using System.Linq;
 using System;
 using TaikoSoundEditor.Collections;
 using System.Text.RegularExpressions;
-using System.Runtime.Remoting.Metadata.W3cXsd2001;
 
 namespace TaikoSoundEditor.Commons.Controls
 {
@@ -26,6 +26,7 @@ namespace TaikoSoundEditor.Commons.Controls
                 .SetValue(MusicOrdersPanel, true);                    
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         internal WordList WordList { get; set; }        
 
         public List<SongCard> SongCards { get; } = new List<SongCard>();        
@@ -76,6 +77,7 @@ namespace TaikoSoundEditor.Commons.Controls
         }
 
         private int _CurrentPage = 0;       
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int CurrentPage
         {
             get => _CurrentPage;
@@ -94,6 +96,7 @@ namespace TaikoSoundEditor.Commons.Controls
 
         private int _ItemsPerRow = 4;
         private int _ItemsPerCol = 5;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int ItemsPerRow
         {
             get => _ItemsPerRow;
@@ -104,6 +107,7 @@ namespace TaikoSoundEditor.Commons.Controls
             }
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public int ItemsPerCol
         {
             get => _ItemsPerCol;
@@ -353,6 +357,7 @@ namespace TaikoSoundEditor.Commons.Controls
         });
 
         private bool _CutActive = false;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool CutActive
         {
             get => _CutActive;
@@ -365,6 +370,7 @@ namespace TaikoSoundEditor.Commons.Controls
         }
 
         private bool _PasteActive = false;
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool PasteActive
         {
             get => _PasteActive;
@@ -378,6 +384,7 @@ namespace TaikoSoundEditor.Commons.Controls
 
         private bool _RemoveActive=false;
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool RemoveActive
         {
             get => _RemoveActive;
@@ -414,6 +421,7 @@ namespace TaikoSoundEditor.Commons.Controls
 
         private bool _PasteMode = false;
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public bool PasteMode
         {
             get => _PasteMode;
