@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -12,20 +15,52 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Set up .NET 10
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
-      - name: Remove obsolete remoting import
+      - name: Modernize MusicOrderViewer metadata
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         shell: pwsh
         run: |
           $path = 'Commons/Controls/MusicOrderViewer.cs'
           $content = [System.IO.File]::ReadAllText($path)
           $content = $content.Replace("using System.Runtime.Remoting.Metadata.W3cXsd2001;`r`n", '')
           $content = $content.Replace("using System.Runtime.Remoting.Metadata.W3cXsd2001;`n", '')
+          if (-not $content.Contains('using System.ComponentModel;')) {
+            $content = $content.Replace('using System.Diagnostics;', "using System.ComponentModel;`r`nusing System.Diagnostics;")
+          }
+          $attribute = '[DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]'
+          $properties = @(
+            'internal WordList WordList { get; set; }',
+            'public int CurrentPage',
+            'public int ItemsPerRow',
+            'public int ItemsPerCol',
+            'public bool CutActive',
+            'public bool PasteActive',
+            'public bool RemoveActive',
+            'public bool PasteMode'
+          )
+          foreach ($property in $properties) {
+            $plain = "        $property"
+            $decorated = "        $attribute`r`n        $property"
+            if ($content.Contains($plain) -and -not $content.Contains($decorated)) {
+              $content = $content.Replace($plain, $decorated)
+            }
+          }
           [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($true))
+
+          if (-not (git diff --quiet -- $path)) {
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add -- $path
+            git commit -m 'Modernize custom control metadata'
+            git push origin HEAD:${{ github.head_ref }}
+          }
 
       - name: Restore
         run: dotnet restore TaikoSoundEditor.sln
@@ -43,10 +78,3 @@ jobs:
         with:
           name: build-log
           path: build.log
-
-      - name: Upload cleaned source
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cleaned-source
-          path: Commons/Controls/MusicOrderViewer.cs
