@@ -14,12 +14,10 @@ namespace TaikoSoundEditor
 {
     partial class MainForm
     {
-        private void ExportDatatable(string path)
+        private void MergeEditableDatatables()
         {
             if (CurrentProject == null)
                 throw new InvalidOperationException("No data project is loaded.");
-
-            Logger.Info($"Exporting complete datatable set to '{path}'");
 
             var mi = new MusicInfos();
             mi.Items.AddRange(MusicInfos.Items);
@@ -27,6 +25,7 @@ namespace TaikoSoundEditor
 
             var ma = new MusicAttributes();
             ma.Items.AddRange(MusicAttributes.Items);
+            ma.Items.AddRange(AddedMusic.Select(item => item.MusicAttribute));
 
             var mo = new MusicOrders();
             mo.Items.AddRange(MusicOrderViewer.SongCards.Select(card => card.MusicOrder));
@@ -34,8 +33,6 @@ namespace TaikoSoundEditor
             var wl = new WordList();
             wl.Items.AddRange(WordList.Items);
 
-            // Merge the properties understood by the legacy editor into the original rows.
-            // Unknown 39.06 and future-version fields remain present in the lossless documents.
             CurrentProject.MusicInfo.MergeKnownItems(
                 Json.DynamicSerialize(mi.Cast(DatatableTypes.MusicInfo), false));
             CurrentProject.MusicAttribute.MergeKnownItems(
@@ -44,14 +41,19 @@ namespace TaikoSoundEditor
                 Json.DynamicSerialize(mo.Cast(DatatableTypes.MusicOrder), false));
             CurrentProject.WordList.MergeKnownItems(
                 Json.DynamicSerialize(wl.Cast(DatatableTypes.Word), false));
+        }
 
-            // Writes all six tables, including untouched AI-section and USB-setting data.
+        private void ExportDatatable(string path)
+        {
+            Logger.Info($"Exporting complete datatable set to '{path}'");
+            MergeEditableDatatables();
             CurrentProject.WriteDatatables(path);
         }
 
         private void ExportNusBanks(string path)
         {
             Logger.Info($"Exporting NUS3BANK files to '{path}'");
+            Directory.CreateDirectory(path);
             foreach (var ns in AddedMusic)
                 File.WriteAllBytes(Path.Combine(path, $"song_{ns.Id}.nus3bank"), ns.Nus3Bank);
         }
@@ -59,6 +61,7 @@ namespace TaikoSoundEditor
         private void ExportSoundBinaries(string path)
         {
             Logger.Info($"Exporting fumen files to '{path}'");
+            Directory.CreateDirectory(path);
             foreach (var ns in AddedMusic)
             {
                 var songDirectory = Path.Combine(path, ns.Id);
@@ -147,12 +150,14 @@ namespace TaikoSoundEditor
                 return;
             }
 
-            var output = TaikoProject.CreateStructure(path);
-            ExportDatatable(output.Datatable);
-            ExportSoundBinaries(output.Fumen);
-            ExportNusBanks(output.Sound);
+            MergeEditableDatatables();
+            ProjectExporter.Export(CurrentProject, path, output =>
+            {
+                ExportSoundBinaries(output.Fumen);
+                ExportNusBanks(output.Sound);
+            });
 
-            MessageBox.Show("Done");
+            MessageBox.Show("Project exported and validated successfully.");
             if (ExportOpenOnFinished.Checked) Process.Start("explorer.exe", path);
         });
     }

@@ -53,6 +53,8 @@ namespace TaikoSoundEditor.Project
             return paths;
         }
 
+        public ProjectIndex BuildIndex() => ProjectIndex.Build(this);
+
         public void WriteDatatables(string datatableDirectory)
         {
             Directory.CreateDirectory(datatableDirectory);

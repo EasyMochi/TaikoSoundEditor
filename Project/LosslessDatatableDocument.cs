@@ -55,6 +55,11 @@ namespace TaikoSoundEditor.Project
             });
         }
 
+        public bool SemanticallyEquals(LosslessDatatableDocument other)
+        {
+            return other != null && JsonNode.DeepEquals(root, other.root);
+        }
+
         public void Write(string path, bool encrypted, bool indented = false)
         {
             var compressed = GZ.CompressToBytes(ToJson(indented));
