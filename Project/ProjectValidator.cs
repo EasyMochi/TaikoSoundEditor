@@ -25,6 +25,32 @@ namespace TaikoSoundEditor.Project
                 if (record.DetailWord == null)
                     diagnostics.Add(Warning(record, "wordlist", "Missing detail row."));
 
+                var primaryGenre = JsonRow.GetInt(record.MusicInfo, "genreNo");
+                if (primaryGenre.HasValue && record.MusicOrders.Count > 0 &&
+                    !record.MusicOrders.Any(row => JsonRow.GetInt(row, "genreNo") == primaryGenre))
+                {
+                    diagnostics.Add(Error(record, "music_order",
+                        $"Primary genre {primaryGenre.Value} has no matching category placement."));
+                }
+
+                foreach (var duplicate in record.MusicOrders
+                    .GroupBy(row => JsonRow.GetInt(row, "genreNo") ?? -1)
+                    .Where(group => group.Count() > 1))
+                {
+                    diagnostics.Add(Error(record, "music_order",
+                        $"Duplicate placement in category {duplicate.Key}."));
+                }
+
+                foreach (var row in record.MusicOrders)
+                {
+                    var rowId = JsonRow.GetString(row, "id");
+                    var rowUniqueId = JsonRow.GetInt(row, "uniqueId") ?? 0;
+                    if (!string.IsNullOrEmpty(rowId) && rowId != record.Id)
+                        diagnostics.Add(Error(record, "music_order", $"Placement id is {rowId}."));
+                    if (rowUniqueId != 0 && rowUniqueId != record.UniqueId)
+                        diagnostics.Add(Error(record, "music_order", $"Placement uniqueId is {rowUniqueId}."));
+                }
+
                 if (!record.Assets.HasSoundBank)
                     diagnostics.Add(Warning(record, "sound", $"Missing {Path.GetFileName(record.Assets.SoundBankPath)}."));
                 if (!record.Assets.HasFumenDirectory)
