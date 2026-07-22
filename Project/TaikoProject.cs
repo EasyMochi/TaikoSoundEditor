@@ -8,6 +8,8 @@ namespace TaikoSoundEditor.Project
     {
         private readonly Dictionary<string, LosslessDatatableDocument> datatables =
             new Dictionary<string, LosslessDatatableDocument>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> deletedSongIds =
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         private TaikoProject(ProjectPaths paths, bool encrypted)
         {
@@ -18,6 +20,7 @@ namespace TaikoSoundEditor.Project
         public ProjectPaths Paths { get; }
         public bool IsEncrypted { get; }
         public IReadOnlyDictionary<string, LosslessDatatableDocument> Datatables => datatables;
+        public IReadOnlyCollection<string> DeletedSongIds => deletedSongIds;
 
         public LosslessDatatableDocument MusicAiSection => Get("music_ai_section.bin");
         public LosslessDatatableDocument MusicAttribute => Get("music_attribute.bin");
@@ -54,6 +57,27 @@ namespace TaikoSoundEditor.Project
         }
 
         public ProjectIndex BuildIndex() => ProjectIndex.Build(this);
+
+        public void MarkSongDeleted(string songId)
+        {
+            if (string.IsNullOrWhiteSpace(songId))
+                throw new ArgumentException("A song id is required.", nameof(songId));
+            deletedSongIds.Add(songId);
+        }
+
+        public void ApplyPendingAssetDeletions(ProjectPaths output)
+        {
+            if (output == null) throw new ArgumentNullException(nameof(output));
+
+            foreach (var songId in deletedSongIds)
+            {
+                var soundBank = output.SoundFile(songId);
+                if (File.Exists(soundBank)) File.Delete(soundBank);
+
+                var fumenDirectory = output.FumenDirectory(songId);
+                if (Directory.Exists(fumenDirectory)) Directory.Delete(fumenDirectory, true);
+            }
+        }
 
         public void WriteDatatables(string datatableDirectory)
         {
