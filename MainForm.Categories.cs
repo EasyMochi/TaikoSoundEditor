@@ -14,8 +14,10 @@ namespace TaikoSoundEditor
             base.OnShown(e);
             InitializeCategoryEditorMenu();
             InitializeSongDeletionMenu();
+            InitializeAdvancedMetadataMenu();
             RefreshCategoryEditorState();
             RefreshSongDeletionState();
+            RefreshAdvancedMetadataState();
         }
 
         private void InitializeCategoryEditorMenu()

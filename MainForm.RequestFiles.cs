@@ -95,6 +95,7 @@ namespace TaikoSoundEditor
             }
 
             RefreshSongDeletionState();
+            RefreshAdvancedMetadataState();
 
             // Loading a project must never repair or mutate it implicitly. Missing rows are
             // surfaced by validation and will receive explicit repair actions in the project UI.

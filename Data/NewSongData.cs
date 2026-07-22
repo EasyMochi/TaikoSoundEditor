@@ -1,8 +1,5 @@
-﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json.Nodes;
 
 namespace TaikoSoundEditor.Data
 {
@@ -24,9 +21,9 @@ namespace TaikoSoundEditor.Data
         public byte[] NBin { get; set; }
         public byte[] NBin1 { get; set; }
         public byte[] NBin2 { get; set; }
-        public byte[] XBin { get; set; }        
-        public byte[] XBin1 { get; set; }        
-        public byte[] XBin2 { get; set; }        
+        public byte[] XBin { get; set; }
+        public byte[] XBin1 { get; set; }
+        public byte[] XBin2 { get; set; }
 
         public byte[] Nus3Bank { get; set; }
 
@@ -38,6 +35,8 @@ namespace TaikoSoundEditor.Data
         public IWord WordSub { get; set; }
         public IWord WordDetail { get; set; }
 
+        public JsonObject MusicAiSection { get; set; }
+        public JsonObject MusicUsbSetting { get; set; }
 
         public override string ToString() => $"{UniqueId}. {Id}";
     }
