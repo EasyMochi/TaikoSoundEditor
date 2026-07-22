@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using TaikoSoundEditor.Collections;
@@ -20,6 +21,7 @@ namespace TaikoSoundEditor
         private WordList WordList;
         private MusicInfos MusicInfos;
         private List<NewSongData> AddedMusic { get; set; } = new List<NewSongData>();
+        private HashSet<string> ImportedAdvancedMetadataIds { get; } = new HashSet<string>(StringComparer.Ordinal);
         private BindingSource AddedMusicBinding { get; set; } = new BindingSource();
         private BindingSource LoadedMusicBinding { get; set; }
     }
