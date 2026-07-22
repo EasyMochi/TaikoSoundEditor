@@ -76,6 +76,7 @@ namespace TaikoSoundEditor
 
             CurrentProject = TaikoProject.Open(DirSelector.Path, UseEncryptionBox.Checked);
             RefreshProjectDiagnosticsState();
+            RefreshCategoryEditorState();
 
             try
             {

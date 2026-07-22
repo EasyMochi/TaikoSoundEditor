@@ -44,6 +44,8 @@ namespace TaikoSoundEditor
                 return;
             }
 
+            // Diagnostics should describe current unsaved edits, not only the original project snapshot.
+            MergeEditableDatatables();
             using (var form = new DiagnosticsForm(CurrentProject.BuildIndex().Diagnostics))
                 form.ShowDialog(this);
         });

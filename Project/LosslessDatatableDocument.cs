@@ -74,12 +74,14 @@ namespace TaikoSoundEditor.Project
             var replacements = replacementRoot["items"] as JsonArray
                 ?? throw new InvalidDataException("Serialized collection does not contain an items array.");
 
-            var existingByIdentity = new Dictionary<string, JsonObject>(StringComparer.Ordinal);
+            var existingByIdentity = new Dictionary<string, Queue<JsonObject>>(StringComparer.Ordinal);
             foreach (var node in items.OfType<JsonObject>())
             {
                 var identity = GetIdentity(node);
-                if (identity != null && !existingByIdentity.ContainsKey(identity))
-                    existingByIdentity.Add(identity, node);
+                if (identity == null) continue;
+                if (!existingByIdentity.TryGetValue(identity, out var queue))
+                    existingByIdentity.Add(identity, queue = new Queue<JsonObject>());
+                queue.Enqueue(node);
             }
 
             var merged = new JsonArray();
@@ -87,8 +89,8 @@ namespace TaikoSoundEditor.Project
             {
                 var identity = GetIdentity(replacement);
                 JsonObject target;
-                if (identity != null && existingByIdentity.TryGetValue(identity, out var existing))
-                    target = (JsonObject)existing.DeepClone();
+                if (identity != null && existingByIdentity.TryGetValue(identity, out var queue) && queue.Count > 0)
+                    target = (JsonObject)queue.Dequeue().DeepClone();
                 else
                     target = new JsonObject();
 
@@ -105,13 +107,20 @@ namespace TaikoSoundEditor.Project
             root["items"] = items;
         }
 
-        private static string GetIdentity(JsonObject item)
+        private string GetIdentity(JsonObject item)
         {
             if (item["key"] != null)
                 return "key:" + item["key"];
 
             var id = item["id"]?.ToString();
             var uniqueId = item["uniqueId"]?.ToString();
+            if (string.Equals(FileName, "music_order.bin", StringComparison.OrdinalIgnoreCase))
+            {
+                var genreNo = item["genreNo"]?.ToString();
+                if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(uniqueId) && !string.IsNullOrEmpty(genreNo))
+                    return $"order:{id}:{uniqueId}:{genreNo}";
+            }
+
             if (!string.IsNullOrEmpty(id) && !string.IsNullOrEmpty(uniqueId))
                 return $"song:{id}:{uniqueId}";
             if (!string.IsNullOrEmpty(id))
