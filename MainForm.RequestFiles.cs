@@ -69,14 +69,16 @@ namespace TaikoSoundEditor
 
         private void OkButton_Click(object sender, EventArgs e) => ExceptionGuard.Run(() =>
         {
-            Logger.Info("Clicked 'Looks good'");
+            Logger.Info("Opening data project");
 
             Config.DatatableIO.IsEncrypted = UseEncryptionBox.Checked;
             SSL.LoadKeys();
 
             CurrentProject = TaikoProject.Open(DirSelector.Path, UseEncryptionBox.Checked);
-            RefreshProjectDiagnosticsState();
-            RefreshCategoryEditorState();
+            AddedMusic.Clear();
+            ImportedAdvancedMetadataIds.Clear();
+            AddedMusicBinding.ResetBindings(false);
+            MusicOrderViewer.SongCards.Clear();
 
             try
             {
@@ -94,25 +96,30 @@ namespace TaikoSoundEditor
                 throw new InvalidDataException("Failed to load the editable song tables.", ex);
             }
 
+            RefreshProjectDiagnosticsState();
+            RefreshCategoryEditorState();
             RefreshSongDeletionState();
             RefreshAdvancedMetadataState();
             RefreshProjectRepairsState();
 
             // Loading a project must never repair or mutate it implicitly. Missing rows are
-            // surfaced by validation and will receive explicit repair actions in the project UI.
+            // surfaced by validation and receive only explicit repair actions in the project UI.
             LoadedMusicBinding = new BindingSource();
             var cleanList = MusicInfos.Items.Where(mi => mi.UniqueId != 0).OrderBy(mi => mi.UniqueId).ToList();
             LoadedMusicBinding.DataSource = cleanList;
             LoadedMusicBox.DataSource = LoadedMusicBinding;
-            TabControl.SelectedIndex = 1;
 
             MusicOrderViewer.WordList = WordList;
             foreach (var musicOrder in MusicOrders.Items.Where(order =>
                          MusicInfos.Items.Any(info => info.UniqueId == order.UniqueId)))
-            {
                 MusicOrderViewer.AddSong(musicOrder);
-            }
             MusicOrderViewer.SortSongs();
+            MusicOrderViewer.MusicOrdersPanel_Update();
+
+            ResetUnifiedStagedState();
+            RefreshUnifiedSongList();
+            UpdateUnifiedWorkspaceState();
+            TabControl.SelectedIndex = 1;
         });
 
         #endregion
