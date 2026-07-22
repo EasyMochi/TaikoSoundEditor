@@ -12,6 +12,14 @@ namespace TaikoSoundEditor
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            InitializeCategoryEditorMenu();
+            InitializeSongDeletionMenu();
+            RefreshCategoryEditorState();
+            RefreshSongDeletionState();
+        }
+
+        private void InitializeCategoryEditorMenu()
+        {
             if (categoriesToolStripMenuItem != null) return;
 
             categoriesToolStripMenuItem = new ToolStripMenuItem
