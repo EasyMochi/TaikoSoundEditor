@@ -18,6 +18,15 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Remove obsolete remoting import
+        shell: pwsh
+        run: |
+          $path = 'Commons/Controls/MusicOrderViewer.cs'
+          $content = [System.IO.File]::ReadAllText($path)
+          $content = $content.Replace("using System.Runtime.Remoting.Metadata.W3cXsd2001;`r`n", '')
+          $content = $content.Replace("using System.Runtime.Remoting.Metadata.W3cXsd2001;`n", '')
+          [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($true))
+
       - name: Restore
         run: dotnet restore TaikoSoundEditor.sln
 
@@ -34,3 +43,10 @@ jobs:
         with:
           name: build-log
           path: build.log
+
+      - name: Upload cleaned source
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleaned-source
+          path: Commons/Controls/MusicOrderViewer.cs
