@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Windows.Forms;
 using TaikoSoundEditor.Collections;
 using TaikoSoundEditor.Commons;
@@ -165,6 +166,33 @@ namespace TaikoSoundEditor
             return picker.ShowDialog() == true ? picker.ResultPath : null;
         }
 
+        private string BuildValidatedExportSummary(string path)
+        {
+            var builder = new StringBuilder();
+            builder.AppendLine("Create a validated exported project?");
+            builder.AppendLine();
+            builder.AppendLine($"Source: {CurrentProject.Paths.Root}");
+            builder.AppendLine($"Destination: {Path.GetFullPath(path)}");
+            builder.AppendLine();
+            builder.AppendLine("STAGED CHANGES");
+            builder.AppendLine($"  Imported songs: {AddedMusic.Count}");
+            builder.AppendLine($"  Directly edited songs: {GetUnifiedEditedSongIds().Count}");
+            builder.AppendLine($"  Applied repairs: {GetUnifiedAppliedRepairCount()}");
+            builder.AppendLine($"  Repaired songs: {GetUnifiedRepairedSongIds().Count}");
+            builder.AppendLine($"  Category/order changes: {(GetUnifiedCategoryChangesStaged() ? "yes" : "no")}");
+            builder.AppendLine($"  Pending song deletions: {CurrentProject.DeletedSongIds.Count}");
+            builder.AppendLine();
+            builder.AppendLine("OUTPUT");
+            builder.AppendLine("  All six datatables will be written losslessly.");
+            builder.AppendLine($"  New sound banks: {AddedMusic.Count}");
+            builder.AppendLine($"  New fumen directories: {AddedMusic.Count}");
+            builder.AppendLine("  Pending deletions are applied only inside the staged output.");
+            builder.AppendLine("  The output is reopened and validated before it replaces the destination.");
+            builder.AppendLine();
+            builder.AppendLine("The selected source folder will remain untouched.");
+            return builder.ToString();
+        }
+
         private void ExportAllButton_Click(object sender, EventArgs e) => ExceptionGuard.Run(() =>
         {
             var path = PickPath();
@@ -174,6 +202,10 @@ namespace TaikoSoundEditor
                 return;
             }
 
+            var confirmation = MessageBox.Show(this, BuildValidatedExportSummary(path),
+                "Validated project export", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+            if (confirmation != DialogResult.OK) return;
+
             MergeEditableDatatables();
             ProjectExporter.Export(CurrentProject, path, output =>
             {
@@ -181,7 +213,10 @@ namespace TaikoSoundEditor
                 ExportNusBanks(output.Sound);
             });
 
-            MessageBox.Show("Project exported and validated successfully.");
+            MarkUnifiedExportComplete(path);
+            MessageBox.Show(this,
+                $"Project exported and validated successfully.\n\nDestination:\n{Path.GetFullPath(path)}",
+                "Export complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
             if (ExportOpenOnFinished.Checked) Process.Start("explorer.exe", path);
         });
     }

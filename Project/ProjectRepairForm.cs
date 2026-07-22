@@ -14,6 +14,7 @@ namespace TaikoSoundEditor.Project
         private readonly TextBox preview = new TextBox();
         private readonly Label summary = new Label();
         private readonly Button apply = new Button();
+        private readonly HashSet<string> appliedSongIds = new HashSet<string>(StringComparer.Ordinal);
         private List<ProjectRepairAction> actions = new List<ProjectRepairAction>();
 
         public ProjectRepairForm(TaikoProject project)
@@ -79,6 +80,8 @@ namespace TaikoSoundEditor.Project
         }
 
         public bool RepairsApplied { get; private set; }
+        public int AppliedCount { get; private set; }
+        public IReadOnlyCollection<string> AppliedSongIds => appliedSongIds;
 
         private void LoadActions()
         {
@@ -130,7 +133,12 @@ namespace TaikoSoundEditor.Project
                     MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
                 return;
 
-            foreach (var action in selected) action.Apply();
+            foreach (var action in selected)
+            {
+                action.Apply();
+                if (!string.IsNullOrWhiteSpace(action.SongId)) appliedSongIds.Add(action.SongId);
+            }
+            AppliedCount += selected.Count;
             RepairsApplied = true;
             MessageBox.Show(this,
                 $"Applied {selected.Count} repair(s). The project has not been written to disk.",

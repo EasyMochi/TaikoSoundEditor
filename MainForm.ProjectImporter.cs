@@ -102,6 +102,7 @@ namespace TaikoSoundEditor
             RefreshCategoryEditorState();
             RefreshSongDeletionState();
             RefreshAdvancedMetadataState();
+            NotifyUnifiedProjectStateChanged();
         }
 
         private static string[] ReadTjaLinesUsingDetectedEncoding(string path)

@@ -17,6 +17,7 @@ namespace TaikoSoundEditor
             InitializeAdvancedMetadataMenu();
             InitializeProjectAwareImporter();
             InitializeProjectRepairsMenu();
+            InitializeUnifiedWorkspace();
             RefreshCategoryEditorState();
             RefreshSongDeletionState();
             RefreshAdvancedMetadataState();
@@ -30,7 +31,7 @@ namespace TaikoSoundEditor
             categoriesToolStripMenuItem = new ToolStripMenuItem
             {
                 Name = "categoriesToolStripMenuItem",
-                Text = "Categories",
+                Text = "Categories...",
                 Enabled = CurrentProject != null
             };
             categoriesToolStripMenuItem.Click += CategoriesToolStripMenuItem_Click;
@@ -47,6 +48,8 @@ namespace TaikoSoundEditor
 
             using (var form = new CategoryEditorForm(MusicInfos, MusicOrders, WordList, MusicOrderViewer))
                 form.ShowDialog(this);
+            MarkUnifiedCategoriesStaged();
+            RefreshUnifiedSongList();
         });
 
         private void RefreshCategoryEditorState()

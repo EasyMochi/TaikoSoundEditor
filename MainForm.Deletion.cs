@@ -18,7 +18,7 @@ namespace TaikoSoundEditor
             deleteSongToolStripMenuItem = new ToolStripMenuItem
             {
                 Name = "deleteSongToolStripMenuItem",
-                Text = "Delete Song...",
+                Text = "Delete song...",
                 Enabled = CurrentProject != null
             };
             deleteSongToolStripMenuItem.Click += DeleteSongToolStripMenuItem_Click;
@@ -48,6 +48,7 @@ namespace TaikoSoundEditor
             var plan = form.SelectedPlan;
             plan.Apply(CurrentProject);
             RemoveSongFromEditableState(plan.Id, plan.UniqueId);
+            NotifyUnifiedProjectStateChanged();
 
             MessageBox.Show(
                 $"{plan.Title ?? plan.Id} was removed from the in-memory project.\n\n" +
