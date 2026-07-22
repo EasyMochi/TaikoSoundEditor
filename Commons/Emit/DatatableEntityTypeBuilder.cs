@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text.Json.Serialization;
@@ -12,226 +11,239 @@ using TaikoSoundEditor.Commons.Utils;
 
 namespace TaikoSoundEditor.Commons.Emit
 {
-    internal class DatatableEntityTypeBuilder
+    internal sealed class DatatableEntityTypeBuilder
     {
-        private readonly ModuleBuilder mb;        
+        private readonly ModuleBuilder moduleBuilder;
 
         public DatatableEntityTypeBuilder()
         {
-            var aName = new AssemblyName(DynamicAssemblyName);
-            AssemblyBuilder ab = AssemblyBuilder.DefineDynamicAssembly(aName, AssemblyBuilderAccess.Run);
-            mb = ab.DefineDynamicModule(aName.Name ?? DynamicAssemblyName);
+            var assemblyName = new AssemblyName(DynamicAssemblyName);
+            var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(assemblyName, AssemblyBuilderAccess.Run);
+            moduleBuilder = assemblyBuilder.DefineDynamicModule(assemblyName.Name ?? DynamicAssemblyName);
         }
 
-        public static Dictionary<string, Type> LoadTypes(DynamicTypeCollection dTypes)
+        public static Dictionary<string, Type> LoadTypes(DynamicTypeCollection dynamicTypes)
         {
             var builder = new DatatableEntityTypeBuilder();
-            var result = new Dictionary<string, Type>();
-            foreach (var dtype in dTypes.Types)
-            {
-                var @interface = Types.GetTypeByName(dtype.Interface);
-                result[dtype.Name] = builder.BuildType(dtype.Name, @interface, dtype.Properties.Select(_ => _.CreatePropertyInfo()));
-            }
-            return result;
+            return dynamicTypes.Types.ToDictionary(
+                dynamicType => dynamicType.Name,
+                dynamicType => builder.BuildType(
+                    dynamicType.Name,
+                    Types.GetTypeByName(dynamicType.Interface),
+                    dynamicType.Properties.Select(property => property.CreatePropertyInfo())));
         }
 
-        public Type BuildType(string name, Type @interface, IEnumerable<EntityPropertyInfo> properties)
+        public Type BuildType(string name, Type interfaceType, IEnumerable<EntityPropertyInfo> properties)
         {
-            TypeBuilder tb = @interface == null
-                ? mb.DefineType(name, TypeAttributes.Public)
-                //: mb.DefineType(name, TypeAttributes.Public);
-                : mb.DefineType(name, TypeAttributes.Public, null, new Type[] { @interface });
-            ConstructorBuilder ctor = tb.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, Type.EmptyTypes);
-            ILGenerator ctorIL = ctor.GetILGenerator();
-            ctorIL.Emit(OpCodes.Ldarg_0);            
-            ctorIL.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes));
-            properties.ForEach(GeneratePropertyAction(tb, ctorIL));
-            ctorIL.Emit(OpCodes.Ret);                            
+            var typeBuilder = interfaceType == null
+                ? moduleBuilder.DefineType(name, TypeAttributes.Public)
+                : moduleBuilder.DefineType(name, TypeAttributes.Public, null, new[] { interfaceType });
 
+            var constructor = typeBuilder.DefineConstructor(
+                MethodAttributes.Public,
+                CallingConventions.Standard,
+                Type.EmptyTypes);
+            var constructorIl = constructor.GetILGenerator();
+            constructorIl.Emit(OpCodes.Ldarg_0);
+            constructorIl.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes));
 
-            if(@interface!=null)
+            var generatedProperties = new Dictionary<string, GeneratedProperty>(StringComparer.Ordinal);
+            foreach (var property in properties)
+                generatedProperties.Add(property.Name, GenerateProperty(typeBuilder, constructorIl, property));
+
+            constructorIl.Emit(OpCodes.Ret);
+
+            if (interfaceType != null)
             {
-                Debug.WriteLine("ERE??");
-                var recastedProps = @interface.GetProperties()
-                    .Where(p => p.GetCustomAttribute<RecastAttribute>() != null)
-                    .ToArray();
-                Debug.WriteLine(recastedProps.Length);
-
-                foreach(var prop in recastedProps)
-                {                    
-                    Debug.WriteLine($"Recasted : {prop} ");
-                    GenerateRecastedProperty(tb, prop, prop.GetCustomAttribute<RecastAttribute>().PropertyName);
+                foreach (var property in interfaceType.GetProperties())
+                {
+                    var recast = property.GetCustomAttribute<RecastAttribute>();
+                    if (recast == null) continue;
+                    if (!generatedProperties.TryGetValue(recast.PropertyName, out var source))
+                        throw new InvalidOperationException(
+                            $"Cannot recast {property.Name}: source property {recast.PropertyName} was not generated.");
+                    GenerateRecastedProperty(typeBuilder, property, source);
                 }
             }
 
-            var type = tb.CreateType();
-            /*var methods = tb.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.SetProperty | BindingFlags.GetProperty);
-            foreach (var m in methods)
-                Debug.WriteLine(m);*/
+            return typeBuilder.CreateType();
+        }
 
-            return type;
-        }      
-
-        private Action<EntityPropertyInfo> GeneratePropertyAction(TypeBuilder tb, ILGenerator ilg) => _ => GenerateProperty(tb, ilg, _);
-
-        private static Expression GetProperty(Expression instance, Type classType, string name)
+        private static GeneratedProperty GenerateProperty(
+            TypeBuilder typeBuilder,
+            ILGenerator constructorIl,
+            EntityPropertyInfo property)
         {
-            var getProperty = typeof(Type).GetMethods().Where(m => m.Name == "GetProperty" && m.GetParameters().Length == 1).First();
-            var getValueMethod = typeof(PropertyInfo).GetMethods().Where(m => m.Name == "GetValue" && m.GetParameters().Length == 1).First();
-            var propInfo = Expression.Call(Expression.Constant(classType), getProperty, Expression.Constant(name));
-            Debug.WriteLine(propInfo);
-            var call = Expression.Call(propInfo, getValueMethod, instance);
-            Debug.WriteLine(call);
-            return call;            
-        }
-
-        public static LambdaExpression ConvertGetExpr<T>(string castSourceName)
-        {            
-            var param = Expression.Parameter(typeof(object));
-            var getType = typeof(object).GetMethods().Where(m => m.Name == "GetType" && m.GetParameters().Length == 0).First();
-            var getProperty = typeof(Type).GetMethods().Where(m => m.Name == "GetProperty" && m.GetParameters().Length == 1).First();
-            var getValue = typeof(PropertyInfo).GetMethods().Where(m => m.Name == "GetValue" && m.GetParameters().Length == 1).First();
-            var getTypeExpr = Expression.Call(param, getType);
-            var getPropertyExpr = Expression.Call(getTypeExpr, getProperty, Expression.Constant(castSourceName));
-            var getValueExpr = Expression.Call(getPropertyExpr, getValue, param);
-            return Expression.Lambda(Expression.Convert(getValueExpr, typeof(T)), param);
-        }
-
-        public static LambdaExpression ConvertSetExpr<T>(string castSourceName, PropertyInfo prop)
-        {
-            Debug.WriteLine("HERE?");
-            Debug.WriteLine(prop);
-            var param0 = Expression.Parameter(typeof(object));
-            var param1 = Expression.Parameter(typeof(T));            
-            var getType = typeof(object).GetMethods().Where(m => m.Name == "GetType" && m.GetParameters().Length == 0).First();
-            var getProperty = typeof(Type).GetMethods().Where(m => m.Name == "GetProperty" && m.GetParameters().Length == 1).First();
-            var setValue = typeof(PropertyInfo).GetMethods().Where(m => m.Name == "SetValue" && m.GetParameters().Length == 2).First();
-            var changeType = typeof(Convert).GetMethods().Where(m => m.Name == "ChangeType" && m.GetParameters().Length == 2
-                && m.GetParameters()[1].ParameterType == typeof(Type)).First();
-            
-
-            var getTypeExpr = Expression.Call(param0, getType);
-            var getPropertyExpr = Expression.Call(getTypeExpr, getProperty, Expression.Constant(castSourceName));
-            var propertyTypeExpr = Expression.Property(getPropertyExpr, "PropertyType");
-            var converted = Expression.Convert(param1, typeof(object));
-            var changeTypeExpr = Expression.Call(changeType, converted, propertyTypeExpr);
-            Debug.WriteLine(getPropertyExpr);
-            Debug.WriteLine(changeTypeExpr);
-            var setValueExpr = Expression.Call(getPropertyExpr, setValue, param0, changeTypeExpr);            
-            Debug.WriteLine(setValueExpr);
-
-            var returnLabel = Expression.Label(typeof(void));
-            return Expression.Lambda(Expression
-                .Block(setValueExpr, Expression.Return(returnLabel), Expression.Label(returnLabel)), param0, param1);
-        }
-
-        static MethodInfo ConvertGetExprMethod(Type t) => 
-            typeof(DatatableEntityTypeBuilder).GetMethod("ConvertGetExpr", BindingFlags.Static | BindingFlags.Public)
-                .MakeGenericMethod(t);
-
-        static MethodInfo ConvertSetExprMethod(Type t) =>
-            typeof(DatatableEntityTypeBuilder).GetMethod("ConvertSetExpr", BindingFlags.Static | BindingFlags.Public)
-                .MakeGenericMethod(t);
-
-        private void GenerateRecastedProperty(TypeBuilder tb, PropertyInfo prop, string castSourceName)
-        {            
-            PropertyBuilder pb = tb.DefineProperty(prop.Name, PropertyAttributes.HasDefault, prop.PropertyType, null);
-
-            if (prop.GetCustomAttribute<JsonIgnoreAttribute>() != null)
-                pb.SetCustomAttribute(new CustomAttributeBuilder(typeof(JsonIgnoreAttribute).GetConstructor(new Type[0]), new object[0]));
-            
-            MethodBuilder mbGetAccessor = tb.DefineMethod($"get_{prop.Name}", GetSetAttr, prop.PropertyType, Type.EmptyTypes);
-            var cvGetExpr = ConvertGetExprMethod(prop.PropertyType).Invoke(null, new object[] { castSourceName }) as LambdaExpression;
-            var m = tb.DefineMethod($"RecastGet{prop.Name}", MethodAttributes.Private | MethodAttributes.Static, CallingConventions.Standard,
-                prop.PropertyType, new Type[] { typeof(object) });
-            Debug.WriteLine(cvGetExpr);
-            cvGetExpr.CompileToMethod(m);            
-
-            var il = mbGetAccessor.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Call, m);
-            il.Emit(OpCodes.Ret);
-
-            pb.SetGetMethod(mbGetAccessor);
-
-            MethodBuilder mbSetAccessor = tb.DefineMethod($"set_{prop.Name}", GetSetAttr, null, new Type[] { prop.PropertyType });
-            var cvSetExpr = ConvertSetExprMethod(prop.PropertyType).Invoke(null, new object[] { castSourceName, prop }) as LambdaExpression;
-            m = tb.DefineMethod($"RecastSet{prop.Name}", MethodAttributes.Private | MethodAttributes.Static, CallingConventions.Standard,
-                typeof(void), new Type[] { typeof(object), prop.PropertyType });
-            cvSetExpr.CompileToMethod(m);
-
-            il = mbSetAccessor.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Call, m);
-            il.Emit(OpCodes.Ret);
-          
-            pb.SetSetMethod(mbSetAccessor);
-        }
-
-        private void GenerateProperty(TypeBuilder tb, ILGenerator ilg, EntityPropertyInfo property)
-        {
-            FieldBuilder fb = tb.DefineField($"m_{property.Name}", property.Type, FieldAttributes.Private);
-
-            if (property.DefaultValue != null) 
+            var field = typeBuilder.DefineField($"m_{property.Name}", property.Type, FieldAttributes.Private);
+            if (property.DefaultValue != null)
             {
-                var vType = property.DefaultValue.GetType();
-                var returnLabel = Expression.Label(vType);
-                var expr = Expression.Lambda(
-                    Expression.Block(
-                        Expression.Return(returnLabel, Expression.Constant(property.DefaultValue)),
-                        Expression.Label(returnLabel, Expression.Constant(property.DefaultValue))
-                        )                    
-                    );
-                var m = tb.DefineMethod($"Initialize{property.Name}", MethodAttributes.Private | MethodAttributes.Static, CallingConventions.Standard,
-                    vType, Type.EmptyTypes);
-                expr.CompileToMethod(m);
-
-                ilg.Emit(OpCodes.Ldarg_0);
-                ilg.Emit(OpCodes.Call, m);                
-                ilg.Emit(OpCodes.Stfld, fb);
+                constructorIl.Emit(OpCodes.Ldarg_0);
+                EmitConstant(constructorIl, property.DefaultValue, property.Type);
+                constructorIl.Emit(OpCodes.Stfld, field);
             }
-            PropertyBuilder pb = tb.DefineProperty(property.Name, PropertyAttributes.HasDefault, property.Type, null);
 
-            MethodBuilder mbGetAccessor = tb.DefineMethod($"get_{property.Name}", GetSetAttr, property.Type, Type.EmptyTypes);            
-            ILGenerator getIL = mbGetAccessor.GetILGenerator();
-            getIL.Emit(OpCodes.Ldarg_0);
-            getIL.Emit(OpCodes.Ldfld, fb);
-            getIL.Emit(OpCodes.Ret);
+            var propertyBuilder = typeBuilder.DefineProperty(
+                property.Name,
+                PropertyAttributes.HasDefault,
+                property.Type,
+                null);
 
-            MethodBuilder mbSetAccessor = tb.DefineMethod($"set_{property.Name}", GetSetAttr, null, new Type[] { property.Type });
-            ILGenerator mbSetIL = mbSetAccessor.GetILGenerator();            
-            mbSetIL.Emit(OpCodes.Ldarg_0);
-            mbSetIL.Emit(OpCodes.Ldarg_1);
-            mbSetIL.Emit(OpCodes.Stfld, fb);
-            mbSetIL.Emit(OpCodes.Ret);
+            var getter = typeBuilder.DefineMethod(
+                $"get_{property.Name}",
+                AccessorAttributes,
+                property.Type,
+                Type.EmptyTypes);
+            var getterIl = getter.GetILGenerator();
+            getterIl.Emit(OpCodes.Ldarg_0);
+            getterIl.Emit(OpCodes.Ldfld, field);
+            getterIl.Emit(OpCodes.Ret);
+            propertyBuilder.SetGetMethod(getter);
 
-            pb.SetGetMethod(mbGetAccessor);
-            pb.SetSetMethod(mbSetAccessor);
+            var setter = typeBuilder.DefineMethod(
+                $"set_{property.Name}",
+                AccessorAttributes,
+                null,
+                new[] { property.Type });
+            var setterIl = setter.GetILGenerator();
+            setterIl.Emit(OpCodes.Ldarg_0);
+            setterIl.Emit(OpCodes.Ldarg_1);
+            setterIl.Emit(OpCodes.Stfld, field);
+            setterIl.Emit(OpCodes.Ret);
+            propertyBuilder.SetSetMethod(setter);
 
-            if (property.JsonPropertyName != null && property.JsonPropertyName != "") 
-                AddAttribute(pb, typeof(JsonPropertyNameAttribute), property.JsonPropertyName);
+            if (!string.IsNullOrEmpty(property.JsonPropertyName))
+                AddAttribute(propertyBuilder, typeof(JsonPropertyNameAttribute), property.JsonPropertyName);
             else
-                AddAttribute(pb, typeof(JsonIgnoreAttribute), new object[0]);
+                AddAttribute(propertyBuilder, typeof(JsonIgnoreAttribute));
 
             if (property.IsReadOnly)
-                AddAttribute(pb, typeof(ReadOnlyAttribute), true);
+                AddAttribute(propertyBuilder, typeof(ReadOnlyAttribute), true);
+
+            return new GeneratedProperty(property.Type, getter, setter);
         }
 
-        private static void AddAttribute(PropertyBuilder pb, Type attributeType, params object[] args)
+        private static void GenerateRecastedProperty(
+            TypeBuilder typeBuilder,
+            PropertyInfo interfaceProperty,
+            GeneratedProperty source)
         {
-            var ctor = (from c in attributeType.GetConstructors()
-                        let pms = c.GetParameters()
-                        where pms.Length == args.Length
-                        where pms.Select(_ => _.ParameterType).Zip(args, (p, a) =>
-                            a == null ? p.IsClass : p.IsAssignableFrom(a.GetType())).All(_ => _)
-                        select c).FirstOrDefault();
-            Debug.WriteLine(ctor?.ToString() ?? "ctor null");
-            pb.SetCustomAttribute(new CustomAttributeBuilder(ctor, args));
+            if (!CanRecast(source.Type, interfaceProperty.PropertyType))
+                throw new InvalidOperationException(
+                    $"Cannot recast {source.Type} to {interfaceProperty.PropertyType} for {interfaceProperty.Name}.");
+
+            var propertyBuilder = typeBuilder.DefineProperty(
+                interfaceProperty.Name,
+                PropertyAttributes.HasDefault,
+                interfaceProperty.PropertyType,
+                null);
+
+            if (interfaceProperty.GetCustomAttribute<JsonIgnoreAttribute>() != null)
+                AddAttribute(propertyBuilder, typeof(JsonIgnoreAttribute));
+
+            var getter = typeBuilder.DefineMethod(
+                $"get_{interfaceProperty.Name}",
+                AccessorAttributes,
+                interfaceProperty.PropertyType,
+                Type.EmptyTypes);
+            var getterIl = getter.GetILGenerator();
+            getterIl.Emit(OpCodes.Ldarg_0);
+            getterIl.Emit(OpCodes.Call, source.Getter);
+            EmitNumericConversion(getterIl, interfaceProperty.PropertyType);
+            getterIl.Emit(OpCodes.Ret);
+            propertyBuilder.SetGetMethod(getter);
+
+            var setter = typeBuilder.DefineMethod(
+                $"set_{interfaceProperty.Name}",
+                AccessorAttributes,
+                null,
+                new[] { interfaceProperty.PropertyType });
+            var setterIl = setter.GetILGenerator();
+            setterIl.Emit(OpCodes.Ldarg_0);
+            setterIl.Emit(OpCodes.Ldarg_1);
+            EmitNumericConversion(setterIl, source.Type);
+            setterIl.Emit(OpCodes.Call, source.Setter);
+            setterIl.Emit(OpCodes.Ret);
+            propertyBuilder.SetSetMethod(setter);
+
+            typeBuilder.DefineMethodOverride(getter, interfaceProperty.GetMethod);
+            typeBuilder.DefineMethodOverride(setter, interfaceProperty.SetMethod);
         }
 
-        private static readonly MethodAttributes GetSetAttr = MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.Virtual;
-        private static readonly string DynamicAssemblyName = "TSEDynEntities";
+        private static bool CanRecast(Type source, Type target)
+        {
+            var sourceValue = source.IsEnum ? Enum.GetUnderlyingType(source) : source;
+            var targetValue = target.IsEnum ? Enum.GetUnderlyingType(target) : target;
+            return sourceValue == targetValue ||
+                   (IsIntegral(sourceValue) && IsIntegral(targetValue));
+        }
 
+        private static bool IsIntegral(Type type) =>
+            type == typeof(byte) || type == typeof(sbyte) ||
+            type == typeof(short) || type == typeof(ushort) ||
+            type == typeof(int) || type == typeof(uint) ||
+            type == typeof(long) || type == typeof(ulong);
+
+        private static void EmitNumericConversion(ILGenerator il, Type type)
+        {
+            type = type.IsEnum ? Enum.GetUnderlyingType(type) : type;
+            if (type == typeof(byte)) il.Emit(OpCodes.Conv_U1);
+            else if (type == typeof(sbyte)) il.Emit(OpCodes.Conv_I1);
+            else if (type == typeof(short)) il.Emit(OpCodes.Conv_I2);
+            else if (type == typeof(ushort)) il.Emit(OpCodes.Conv_U2);
+            else if (type == typeof(int)) il.Emit(OpCodes.Conv_I4);
+            else if (type == typeof(uint)) il.Emit(OpCodes.Conv_U4);
+            else if (type == typeof(long)) il.Emit(OpCodes.Conv_I8);
+            else if (type == typeof(ulong)) il.Emit(OpCodes.Conv_U8);
+        }
+
+        private static void EmitConstant(ILGenerator il, object value, Type targetType)
+        {
+            if (targetType == typeof(string)) il.Emit(OpCodes.Ldstr, (string)value);
+            else if (targetType == typeof(bool)) il.Emit((bool)value ? OpCodes.Ldc_I4_1 : OpCodes.Ldc_I4_0);
+            else if (targetType == typeof(int)) il.Emit(OpCodes.Ldc_I4, (int)value);
+            else if (targetType == typeof(uint)) il.Emit(OpCodes.Ldc_I4, unchecked((int)(uint)value));
+            else if (targetType == typeof(short)) il.Emit(OpCodes.Ldc_I4, (short)value);
+            else if (targetType == typeof(ushort)) il.Emit(OpCodes.Ldc_I4, (ushort)value);
+            else if (targetType == typeof(double)) il.Emit(OpCodes.Ldc_R8, (double)value);
+            else
+                throw new InvalidOperationException($"Unsupported default value type {targetType}.");
+        }
+
+        private static void AddAttribute(PropertyBuilder property, Type attributeType, params object[] arguments)
+        {
+            var constructor = attributeType.GetConstructors()
+                .FirstOrDefault(candidate =>
+                {
+                    var parameters = candidate.GetParameters();
+                    return parameters.Length == arguments.Length &&
+                           parameters.Select(parameter => parameter.ParameterType)
+                               .Zip(arguments, (parameter, argument) =>
+                                   argument == null ? parameter.IsClass : parameter.IsAssignableFrom(argument.GetType()))
+                               .All(matches => matches);
+                });
+
+            if (constructor == null)
+                throw new InvalidOperationException($"No matching constructor found for {attributeType.Name}.");
+
+            property.SetCustomAttribute(new CustomAttributeBuilder(constructor, arguments));
+        }
+
+        private sealed class GeneratedProperty
+        {
+            public GeneratedProperty(Type type, MethodBuilder getter, MethodBuilder setter)
+            {
+                Type = type;
+                Getter = getter;
+                Setter = setter;
+            }
+
+            public Type Type { get; }
+            public MethodBuilder Getter { get; }
+            public MethodBuilder Setter { get; }
+        }
+
+        private const MethodAttributes AccessorAttributes =
+            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.Virtual;
+        private const string DynamicAssemblyName = "TSEDynEntities";
     }
 }
