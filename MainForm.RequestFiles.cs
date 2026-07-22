@@ -75,6 +75,7 @@ namespace TaikoSoundEditor
             SSL.LoadKeys();
 
             CurrentProject = TaikoProject.Open(DirSelector.Path, UseEncryptionBox.Checked);
+            RefreshProjectDiagnosticsState();
 
             try
             {
