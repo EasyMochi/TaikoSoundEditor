@@ -1,11 +1,8 @@
-﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using TaikoSoundEditor.Collections;
 using TaikoSoundEditor.Data;
+using TaikoSoundEditor.Project;
 
 namespace TaikoSoundEditor
 {
@@ -15,6 +12,8 @@ namespace TaikoSoundEditor
         private string MusicOrderPath { get; set; }
         private string MusicInfoPath { get; set; }
         private string WordListPath { get; set; }
+
+        private TaikoProject CurrentProject { get; set; }
 
         private MusicAttributes MusicAttributes;
         private MusicOrders MusicOrders;
