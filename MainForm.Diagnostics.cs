@@ -9,8 +9,17 @@ namespace TaikoSoundEditor
     {
         private ToolStripMenuItem diagnosticsToolStripMenuItem;
 
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
+            InitializeProjectDiagnosticsMenu();
+            RefreshProjectDiagnosticsState();
+        }
+
         private void InitializeProjectDiagnosticsMenu()
         {
+            if (diagnosticsToolStripMenuItem != null) return;
+
             diagnosticsToolStripMenuItem = new ToolStripMenuItem
             {
                 Name = "diagnosticsToolStripMenuItem",
