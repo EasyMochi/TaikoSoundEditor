@@ -48,6 +48,7 @@ namespace TaikoSoundEditor
             if (!form.RepairsApplied) return;
 
             ReloadEditableStateFromProject();
+            RegisterUnifiedRepairs(form.AppliedSongIds, form.AppliedCount);
             RefreshProjectDiagnosticsState();
             RefreshCategoryEditorState();
             RefreshSongDeletionState();
@@ -117,6 +118,8 @@ namespace TaikoSoundEditor
             MusicOrderViewer.MusicOrdersPanel_Update();
 
             AddedMusicBinding.ResetBindings(false);
+            RefreshUnifiedSongList();
+            UpdateUnifiedWorkspaceState();
         }
     }
 }
