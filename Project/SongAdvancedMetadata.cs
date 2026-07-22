@@ -123,14 +123,36 @@ namespace TaikoSoundEditor.Project
 
         private static int CalculateSectionCount(TJA tja, int difficulty)
         {
-            if (tja == null || !tja.Courses.TryGetValue(difficulty, out var course))
+            if (tja == null || !tja.Courses.TryGetValue(difficulty, out var course) || course.Measures.Count == 0)
                 return 3;
 
-            var notes = course.Converted.Notes;
-            if (notes == null || notes.Length == 0)
-                return 3;
+            var bpm = tja.Headers.Bpm > 0 ? (double)tja.Headers.Bpm : 120.0;
+            var durationSeconds = 0.0;
 
-            var durationSeconds = notes.Max(note => (double)note.Time);
+            foreach (var measure in course.Measures)
+            {
+                if (measure.Length == null || measure.Length.Length < 2 || measure.Length[1] == 0)
+                    continue;
+
+                var measureBeats = (double)measure.Length[0] / measure.Length[1] * 4.0;
+                var dataLength = Math.Max(1, measure.MeasureData?.Length ?? 0);
+                var previousPosition = 0;
+
+                foreach (var bpmEvent in measure.Events
+                             .Where(evt => string.Equals(evt.Name, "bpm", StringComparison.OrdinalIgnoreCase))
+                             .OrderBy(evt => evt.Position))
+                {
+                    var position = Math.Max(previousPosition, Math.Min(dataLength, bpmEvent.Position));
+                    var segmentBeats = measureBeats * (position - previousPosition) / dataLength;
+                    durationSeconds += segmentBeats * 60.0 / bpm;
+                    if (bpmEvent.Value > 0) bpm = bpmEvent.Value;
+                    previousPosition = position;
+                }
+
+                var remainingBeats = measureBeats * (dataLength - previousPosition) / dataLength;
+                durationSeconds += remainingBeats * 60.0 / bpm;
+            }
+
             return durationSeconds < LongChartThresholdSeconds ? 3 : 5;
         }
     }
