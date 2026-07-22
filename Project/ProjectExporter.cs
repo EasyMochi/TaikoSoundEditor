@@ -33,6 +33,7 @@ namespace TaikoSoundEditor.Project
                 CopyDirectory(source.Paths.Fumen, stagingPaths.Fumen);
                 source.WriteDatatables(stagingPaths.Datatable);
                 writeChanges?.Invoke(stagingPaths);
+                source.ApplyPendingAssetDeletions(stagingPaths);
 
                 var staged = TaikoProject.Open(staging, source.IsEncrypted);
                 EnsureSemanticDatatables(source, staged);
