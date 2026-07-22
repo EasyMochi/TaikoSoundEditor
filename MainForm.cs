@@ -14,7 +14,6 @@ namespace TaikoSoundEditor
         public MainForm()
         {
             InitializeComponent();
-            InitializeProjectDiagnosticsMenu();
             //Init button event handlers
             MusicAttributePathSelector.PathChanged += MusicAttributePathSelector_PathChanged;
             MusicOrderPathSelector.PathChanged += MusicOrderPathSelector_PathChanged;
@@ -132,7 +131,7 @@ namespace TaikoSoundEditor
             if(SoundViewTab.SelectedTab == MusicOrderTab) SoundViewTab.SelectedTab = SoundViewerSimple;
         });
 
-        #endregion
+        #endregion        
 
         private void RemoveNewSong(NewSongData ns)
         {
@@ -243,6 +242,7 @@ namespace TaikoSoundEditor
 
                 Logger.Info($"Simple Box changed : {(sender as Control).Name} to value {(sender as Control).Text}");
 
+
                 WordList.GetBySong(item.Id).JapaneseText = SimpleTitleBox.Text;
                 WordList.GetBySongSub(item.Id).JapaneseText = SimpleSubtitleBox.Text;
                 WordList.GetBySongDetail(item.Id).JapaneseText = SimpleDetailBox.Text;
@@ -334,6 +334,7 @@ namespace TaikoSoundEditor
                 NewSoundsBox.SelectedItem = ns;
                 return;
             }
+
         }
 
         private void SearchBox_TextChanged(object sender, EventArgs e) => RefreshExistingSongsListView();
@@ -354,8 +355,97 @@ namespace TaikoSoundEditor
                         || WordList.GetBySongSub(mi.Id).JapaneseText.Contains(SearchBox.Text);
                 })
                 .ToList();
-            LoadedMusicBinding.DataSource = list;
+            LoadedMusicBox.DataSource = list;
             LoadedMusicBinding.ResetBindings(false);
+        }
+
+        private void MusicOrderSortToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SortByGenreToolStripMenuItem.Checked = SortByIdToolStripMenuItem.Checked = sortByTitleToolStripMenuItem.Checked = noSortToolStripMenuItem.Checked = false;
+
+            if (sender == SortByGenreToolStripMenuItem)
+            {
+                SortByGenreToolStripMenuItem.Checked = true;
+                Config.SetMusicOrderSortByGenre();
+            }
+            else if (sender == SortByIdToolStripMenuItem)
+            {
+                SortByIdToolStripMenuItem.Checked = true;
+                Config.SetMusicOrderSortById();
+            }
+            else if (sender == sortByTitleToolStripMenuItem)
+            {
+                sortByTitleToolStripMenuItem.Checked = true;
+                Config.SetMusicOrderSortByTitle();
+            }
+            else  //(sender == noSortToolStripMenuItem)
+            {
+                noSortToolStripMenuItem.Checked = true;
+                Config.SetMusicOrderNoSort();
+            }
+
+            MusicOrderViewer.SortSongs();
+            MusicOrderViewer.MusicOrdersPanel_Update();
+        }
+
+        private void LoadPreferences()
+        {
+            UseEncryptionBox.Checked = Config.UseEncryption;
+            UseEncryptionBox_CheckedChanged(null, null); // update state of the key two text boxes
+
+            //If path is set for the datatable folder, update paths for all the files.
+            if (Config.DatatablesPath != "") DirSelector.Path = Config.DatatablesPath;
+
+
+            DatatableKeyBox.Text = Config.DatatableKey;
+            FumenKeyBox.Text = Config.FumenKey;
+
+            DatatableDef.Path = Config.DatatableDefPath;
+
+            var musicOrderSort = Config.IniFile.Read(Config.MusicOrderSortProperty);
+            if (musicOrderSort == Config.MusicOrderSortValueGenre) SortByGenreToolStripMenuItem.PerformClick();
+            else if (musicOrderSort == Config.MusicOrderSortValueId) SortByIdToolStripMenuItem.PerformClick();
+            else if (musicOrderSort == Config.MusicOrderSortValueTitle) sortByTitleToolStripMenuItem.PerformClick();
+        }
+
+        private void checkForUpdatesToolStripMenuItem_Click(object sender, EventArgs e) => ExceptionGuard.Run(() =>
+        {
+            //var rel = await Updates.GetLatestTja2Fumen();
+        });
+
+        private void DatatableKeyBox_TextChanged(object sender, EventArgs e) => Config.DatatableKey = DatatableKeyBox.Text;
+
+        private void FumenKeyBox_TextChanged(object sender, EventArgs e) => Config.FumenKey = FumenKeyBox.Text;
+
+        private void LoadedMusicBox_DrawItem(object sender, DrawItemEventArgs e)
+        {
+            e.DrawBackground();
+            if (e.Index < 0 || e.Index >= LoadedMusicBox.Items.Count)
+                return;
+            var selItem = LoadedMusicBox.Items[e.Index] as IMusicInfo;
+            TextRenderer.DrawText(e.Graphics, $"{selItem.UniqueId}. {selItem.Id}", Font, e.Bounds, e.ForeColor, e.BackColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+            e.DrawFocusRectangle();
+        }
+
+        private void DatatableDef_PathChanged(object sender, EventArgs args)
+        {
+            try
+            {
+                var json = File.ReadAllText(DatatableDef.Path);
+                DatatableTypes.LoadFromJson(json);
+                Config.DatatableDefPath = DatatableDef.Path;
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+            }
+        }
+
+        private void UseEncryptionBox_CheckedChanged(object sender, EventArgs e)
+        {
+            Config.UseEncryption = UseEncryptionBox.Checked;
+            FumenKeyBox.Enabled = UseEncryptionBox.Checked;
+            DatatableKeyBox.Enabled = UseEncryptionBox.Checked;
         }
     }
 }
