@@ -94,6 +94,8 @@ namespace TaikoSoundEditor
                 throw new InvalidDataException("Failed to load the editable song tables.", ex);
             }
 
+            RefreshSongDeletionState();
+
             // Loading a project must never repair or mutate it implicitly. Missing rows are
             // surfaced by validation and will receive explicit repair actions in the project UI.
             LoadedMusicBinding = new BindingSource();
