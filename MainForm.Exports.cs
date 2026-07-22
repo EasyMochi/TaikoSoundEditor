@@ -21,18 +21,27 @@ namespace TaikoSoundEditor
                 throw new InvalidOperationException("No data project is loaded.");
 
             var mi = new MusicInfos();
-            mi.Items.AddRange(MusicInfos.Items);
-            mi.Items.AddRange(AddedMusic.Select(item => item.MusicInfo));
+            mi.Items.AddRange(MusicInfos.Items
+                .Concat(AddedMusic.Select(item => item.MusicInfo))
+                .GroupBy(item => (item.Id, item.UniqueId))
+                .Select(group => group.Last()));
 
             var ma = new MusicAttributes();
-            ma.Items.AddRange(MusicAttributes.Items);
-            ma.Items.AddRange(AddedMusic.Select(item => item.MusicAttribute));
+            ma.Items.AddRange(MusicAttributes.Items
+                .Concat(AddedMusic.Select(item => item.MusicAttribute))
+                .GroupBy(item => (item.Id, item.UniqueId))
+                .Select(group => group.Last()));
 
             var mo = new MusicOrders();
-            mo.Items.AddRange(MusicOrderViewer.SongCards.Select(card => card.MusicOrder));
+            mo.Items.AddRange(MusicOrderViewer.SongCards
+                .Select(card => card.MusicOrder)
+                .GroupBy(item => (item.Id, item.UniqueId, item.GenreNo))
+                .Select(group => group.Last()));
 
             var wl = new WordList();
-            wl.Items.AddRange(WordList.Items);
+            wl.Items.AddRange(WordList.Items
+                .GroupBy(item => item.Key, StringComparer.Ordinal)
+                .Select(group => group.Last()));
 
             CurrentProject.MusicInfo.MergeKnownItems(
                 Json.DynamicSerialize(mi.Cast(DatatableTypes.MusicInfo), false));
