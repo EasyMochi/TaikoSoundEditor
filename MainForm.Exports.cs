@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -41,6 +42,20 @@ namespace TaikoSoundEditor
                 Json.DynamicSerialize(mo.Cast(DatatableTypes.MusicOrder), false));
             CurrentProject.WordList.MergeKnownItems(
                 Json.DynamicSerialize(wl.Cast(DatatableTypes.Word), false));
+
+            var activeImportedIds = new HashSet<string>(AddedMusic.Select(item => item.Id), StringComparer.Ordinal);
+            SongAdvancedMetadata.RemoveOwnedRows(CurrentProject.MusicAiSection.Items,
+                ImportedAdvancedMetadataIds, activeImportedIds);
+            SongAdvancedMetadata.RemoveOwnedRows(CurrentProject.MusicUsbSetting.Items,
+                ImportedAdvancedMetadataIds, activeImportedIds);
+
+            foreach (var item in AddedMusic)
+            {
+                SongAdvancedMetadata.Upsert(CurrentProject.MusicAiSection.Items,
+                    item.MusicAiSection, "music_ai_section");
+                SongAdvancedMetadata.Upsert(CurrentProject.MusicUsbSetting.Items,
+                    item.MusicUsbSetting, "music_usbsetting");
+            }
         }
 
         private void ExportDatatable(string path)
