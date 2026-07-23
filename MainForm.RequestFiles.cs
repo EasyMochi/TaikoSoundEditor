@@ -75,6 +75,7 @@ namespace TaikoSoundEditor
             SSL.LoadKeys();
 
             CurrentProject = TaikoProject.Open(DirSelector.Path, UseEncryptionBox.Checked);
+            ResetMultilingualWordSchema();
             AddedMusic.Clear();
             ImportedAdvancedMetadataIds.Clear();
             AddedMusicBinding.ResetBindings(false);

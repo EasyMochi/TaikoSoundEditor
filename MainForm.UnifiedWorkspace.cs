@@ -27,6 +27,7 @@ namespace TaikoSoundEditor
         private ToolStripStatusLabel unifiedProjectStatus;
         private ToolStripStatusLabel unifiedChangesStatus;
         private Button unifiedImportButton;
+        private Button unifiedBatchImportButton;
         private Button unifiedMetadataButton;
         private Button unifiedAdvancedButton;
         private Button unifiedCategoriesButton;
@@ -74,6 +75,8 @@ namespace TaikoSoundEditor
             BuildUnifiedLandingPage();
             BuildUnifiedImportPage();
             BuildUnifiedWorkspacePage();
+            InitializeSimpleAttributeControls();
+            InitializeMultilingualWordEditor();
             HookUnifiedWorkspaceEvents();
             ResetUnifiedStagedState();
             ResumeLayout(true);
@@ -250,6 +253,7 @@ namespace TaikoSoundEditor
         private Control BuildUnifiedActionRail()
         {
             unifiedImportButton = ActionButton("Import TJA song...");
+            unifiedBatchImportButton = ActionButton("Batch import ESE folder...");
             unifiedMetadataButton = ActionButton("Edit metadata");
             unifiedAdvancedButton = ActionButton("Advanced fields");
             unifiedCategoriesButton = ActionButton("Edit categories...");
@@ -260,6 +264,7 @@ namespace TaikoSoundEditor
             unifiedExportButton = ActionButton("Validated export...");
 
             unifiedImportButton.Click += (_, _) => CreateButton_Click(this, EventArgs.Empty);
+            unifiedBatchImportButton.Click += (_, _) => OpenEseBatchImporter();
             unifiedMetadataButton.Click += (_, _) => SoundViewTab.SelectedTab = SoundViewerSimple;
             unifiedAdvancedButton.Click += (_, _) => SoundViewTab.SelectedTab = SoundViewerExpert;
             unifiedCategoriesButton.Click += (_, _) => CategoriesToolStripMenuItem_Click(this, EventArgs.Empty);
@@ -269,12 +274,12 @@ namespace TaikoSoundEditor
             unifiedRepairsButton.Click += (_, _) => RepairsToolStripMenuItem_Click(this, EventArgs.Empty);
             unifiedExportButton.Click += (_, _) => ExportAllButton_Click(this, EventArgs.Empty);
 
-            var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 11, Padding = new Padding(6) };
+            var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 12, Padding = new Padding(6) };
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-            for (var i = 0; i < 9; i++) panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 43));
+            for (var i = 0; i < 10; i++) panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 43));
             panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             panel.Controls.Add(Heading("Actions"), 0, 0);
-            var buttons = new[] { unifiedImportButton, unifiedMetadataButton, unifiedAdvancedButton, unifiedCategoriesButton, unifiedAiUsbButton, unifiedDeleteButton, unifiedDiagnosticsButton, unifiedRepairsButton, unifiedExportButton };
+            var buttons = new[] { unifiedImportButton, unifiedBatchImportButton, unifiedMetadataButton, unifiedAdvancedButton, unifiedCategoriesButton, unifiedAiUsbButton, unifiedDeleteButton, unifiedDiagnosticsButton, unifiedRepairsButton, unifiedExportButton };
             for (var i = 0; i < buttons.Length; i++) panel.Controls.Add(buttons[i], 0, i + 1);
             return panel;
         }
@@ -294,6 +299,8 @@ namespace TaikoSoundEditor
 
             var song = new ToolStripMenuItem("&Song");
             song.DropDownItems.Add(MenuItem("Import TJA song...", () => CreateButton_Click(this, EventArgs.Empty)));
+            song.DropDownItems.Add(MenuItem("Batch import ESE folder...", OpenEseBatchImporter));
+            song.DropDownItems.Add(new ToolStripSeparator());
             song.DropDownItems.Add(MenuItem("Edit metadata", () => SoundViewTab.SelectedTab = SoundViewerSimple));
             song.DropDownItems.Add(MenuItem("Advanced fields", () => SoundViewTab.SelectedTab = SoundViewerExpert));
             song.DropDownItems.Add(MenuItem("Categories...", () => CategoriesToolStripMenuItem_Click(this, EventArgs.Empty)));
@@ -350,8 +357,11 @@ namespace TaikoSoundEditor
 
         private void MarkCurrentUnifiedSongEdited()
         {
-            if (LoadedMusicBox.SelectedItem is not IMusicInfo info) return;
-            unifiedEditedSongIds.Add(info.Id);
+            if (LoadedMusicBox.SelectedItem is IMusicInfo info)
+                unifiedEditedSongIds.Add(info.Id);
+            else if (NewSoundsBox.SelectedItem is not NewSongData)
+                return;
+
             unifiedExportIsCurrent = false;
             RefreshUnifiedSongList();
             UpdateUnifiedWorkspaceState();
@@ -366,22 +376,65 @@ namespace TaikoSoundEditor
                 var item = unifiedSongsBox.SelectedItem as UnifiedSongItem;
                 if (item == null || item.Deleted)
                 {
-                    LoadedMusicBox.SelectedItem = null;
-                    NewSoundsBox.SelectedItem = null;
-                    unifiedSelectionHeading.Text = item?.Deleted == true ? $"{item.Id} is pending deletion" : "Select a song";
+                    indexChanging = true;
+                    try
+                    {
+                        LoadedMusicBox.SelectedItem = null;
+                        NewSoundsBox.SelectedItem = null;
+                    }
+                    finally
+                    {
+                        indexChanging = false;
+                    }
+
+                    ClearSimpleEditor();
+                    unifiedSelectionHeading.Text = item?.Deleted == true
+                        ? $"{item.Id} is pending deletion"
+                        : "Select a song";
                     return;
                 }
 
                 if (item.Source is IMusicInfo info)
                 {
-                    NewSoundsBox.SelectedItem = null;
-                    LoadedMusicBox.SelectedItem = info;
+                    indexChanging = true;
+                    try
+                    {
+                        NewSoundsBox.SelectedItem = null;
+                        LoadedMusicBox.SelectedItem = LoadedMusicBox.Items.Cast<IMusicInfo>()
+                            .FirstOrDefault(candidate =>
+                                candidate.UniqueId == info.UniqueId &&
+                                string.Equals(candidate.Id, info.Id, StringComparison.Ordinal));
+                    }
+                    finally
+                    {
+                        indexChanging = false;
+                    }
+
+                    // Do not depend on SelectedIndexChanged. The hidden legacy list may
+                    // already contain this selection, in which case WinForms raises no event.
+                    LoadMusicInfo(info);
                 }
                 else if (item.Source is NewSongData song)
                 {
-                    LoadedMusicBox.SelectedItem = null;
-                    NewSoundsBox.SelectedItem = song;
+                    indexChanging = true;
+                    try
+                    {
+                        LoadedMusicBox.SelectedItem = null;
+                        NewSoundsBox.SelectedItem = AddedMusic.FirstOrDefault(candidate =>
+                            candidate.UniqueId == song.UniqueId &&
+                            string.Equals(candidate.Id, song.Id, StringComparison.Ordinal));
+                    }
+                    finally
+                    {
+                        indexChanging = false;
+                    }
+
+                    LoadNewSongData(song);
                 }
+
+                if (SoundViewTab.SelectedTab == MusicOrderTab)
+                    SoundViewTab.SelectedTab = SoundViewerSimple;
+
                 unifiedSelectionHeading.Text = $"Selected: {item.Id}  ·  UID {item.UniqueId}";
             }
             finally

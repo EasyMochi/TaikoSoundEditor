@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
 using TaikoSoundEditor.Commons.IO;
@@ -23,10 +24,14 @@ namespace TaikoSoundEditor.Project
         private readonly int silenceSeconds;
         private readonly float adjustedOffset;
         private readonly float adjustedDemoStart;
+        private readonly Genre? genreOverride;
+        private readonly string genreSource;
+        private readonly bool markAsNew;
 
         private SongImportPlan(TaikoProject project, IEnumerable<NewSongData> pendingSongs,
             string audioPath, string tjaPath, string songId, int uniqueId, TJA tja,
-            string[] sourceLines, int silenceSeconds)
+            string[] sourceLines, int silenceSeconds, Genre? genreOverride,
+            string genreSource, bool markAsNew)
         {
             Project = project ?? throw new ArgumentNullException(nameof(project));
             PendingSongs = (pendingSongs ?? Enumerable.Empty<NewSongData>()).ToList();
@@ -39,6 +44,9 @@ namespace TaikoSoundEditor.Project
             this.silenceSeconds = Math.Max(0, silenceSeconds);
             adjustedOffset = Tja.Headers.Offset - this.silenceSeconds;
             adjustedDemoStart = Tja.Headers.DemoStart + this.silenceSeconds;
+            this.genreOverride = genreOverride;
+            this.genreSource = genreSource ?? string.Empty;
+            this.markAsNew = markAsNew;
 
             Analyze();
         }
@@ -58,10 +66,11 @@ namespace TaikoSoundEditor.Project
 
         public static SongImportPlan Create(TaikoProject project, IEnumerable<NewSongData> pendingSongs,
             string audioPath, string tjaPath, string songId, int uniqueId, TJA tja,
-            string[] sourceLines, int silenceSeconds)
+            string[] sourceLines, int silenceSeconds, Genre? genreOverride = null,
+            string genreSource = null, bool markAsNew = true)
         {
             return new SongImportPlan(project, pendingSongs, audioPath, tjaPath, songId, uniqueId,
-                tja, sourceLines, silenceSeconds);
+                tja, sourceLines, silenceSeconds, genreOverride, genreSource, markAsNew);
         }
 
         public static int FindNextUniqueId(TaikoProject project, IEnumerable<NewSongData> pendingSongs)
@@ -115,6 +124,11 @@ namespace TaikoSoundEditor.Project
                 var musicInfo = CreateMusicInfo();
                 var musicAttribute = CreateMusicAttribute();
                 var musicOrder = DatatableTypes.CreateMusicOrder(Genre, SongId, UniqueId);
+
+                var titleWord = CreateLocalizedWord("song_" + SongId, BuildTitleTexts(Tja.Headers));
+                var subtitleWord = CreateLocalizedWord("song_sub_" + SongId, BuildSubtitleTexts(Tja.Headers));
+                var detailWord = CreateLocalizedWord("song_detail_" + SongId, BuildDetailTexts());
+
                 var data = new NewSongData
                 {
                     Id = SongId,
@@ -138,9 +152,12 @@ namespace TaikoSoundEditor.Project
                     MusicInfo = musicInfo,
                     MusicAttribute = musicAttribute,
                     MusicOrder = musicOrder,
-                    Word = DatatableTypes.CreateWord("song_" + SongId, Tja.Headers.Title ?? string.Empty),
-                    WordSub = DatatableTypes.CreateWord("song_sub_" + SongId, Tja.Headers.Subtitle ?? string.Empty),
-                    WordDetail = DatatableTypes.CreateWord("song_detail_" + SongId, Tja.Headers.TitleJa ?? string.Empty),
+                    Word = titleWord.Typed,
+                    WordSub = subtitleWord.Typed,
+                    WordDetail = detailWord.Typed,
+                    WordRow = titleWord.Raw,
+                    WordSubRow = subtitleWord.Raw,
+                    WordDetailRow = detailWord.Raw,
                     MusicAiSection = SongAdvancedMetadata.CreateAiRow(SongId, UniqueId, Tja, musicInfo),
                     MusicUsbSetting = SongAdvancedMetadata.CreateUsbRow(SongId, UniqueId)
                 };
@@ -166,10 +183,19 @@ namespace TaikoSoundEditor.Project
             var text = new StringBuilder();
             text.AppendLine("PROJECT-AWARE TJA IMPORT");
             text.AppendLine();
-            text.AppendLine($"Song: {Tja.Headers.Title}");
-            text.AppendLine($"Subtitle: {Tja.Headers.Subtitle}");
+            var titleTexts = BuildTitleTexts(Tja.Headers);
+            var subtitleTexts = BuildSubtitleTexts(Tja.Headers);
+            text.AppendLine($"Title (Japanese): {titleTexts.Japanese}");
+            text.AppendLine($"Title (English): {titleTexts.English}");
+            text.AppendLine($"Title (Traditional Chinese): {titleTexts.ChineseTraditional}");
+            text.AppendLine($"Title (Korean): {titleTexts.Korean}");
+            text.AppendLine($"Title (Simplified Chinese): {titleTexts.ChineseSimplified}");
+            text.AppendLine($"Subtitle (Japanese / English): {subtitleTexts.Japanese} / {subtitleTexts.English}");
             text.AppendLine($"ID / unique ID: {SongId} / {UniqueId}");
-            text.AppendLine($"Genre: {Genre} (TJA: {Tja.Headers.Genre})");
+            text.AppendLine(genreOverride.HasValue
+                ? $"Genre: {Genre} (folder: {genreSource}; TJA: {Tja.Headers.Genre})"
+                : $"Genre: {Genre} (TJA: {Tja.Headers.Genre})");
+            text.AppendLine($"NEW flag: {markAsNew}");
             text.AppendLine($"Audio: {AudioPath}");
             text.AppendLine($"TJA: {TjaPath}");
             text.AppendLine($"Added silence: {silenceSeconds} second(s)");
@@ -186,8 +212,11 @@ namespace TaikoSoundEditor.Project
 
                 var placeholder = placeholderDifficulties.Contains(difficulty) ? "generated placeholder, " : string.Empty;
                 var aiSections = GetAiSectionCount(difficulty);
+                var stats = TjaCourseStatistics.Calculate(Tja.Headers, course);
                 text.AppendLine($"  {DifficultyNames[difficulty]}: {placeholder}{course.Headers.Level}★, " +
-                                $"{course.NotesCount} note(s), branch={course.HasBranches}, AI={aiSections}");
+                                $"{stats.NoteCount} note(s), renda={Format(stats.RendaTimeSeconds)}s, " +
+                                $"fuusen={stats.FuusenTotal}, shinuti={stats.Shinuti}, " +
+                                $"branch={course.HasBranches}, AI={aiSections}");
             }
 
             text.AppendLine();
@@ -227,6 +256,106 @@ namespace TaikoSoundEditor.Project
             return text.ToString();
         }
 
+        private sealed class LocalizedTextSet
+        {
+            public string Japanese { get; init; } = string.Empty;
+            public string English { get; init; } = string.Empty;
+            public string ChineseTraditional { get; init; } = string.Empty;
+            public string Korean { get; init; } = string.Empty;
+            public string ChineseSimplified { get; init; } = string.Empty;
+        }
+
+        private sealed class LocalizedWord
+        {
+            public IWord Typed { get; init; }
+            public JsonObject Raw { get; init; }
+        }
+
+        private static LocalizedTextSet BuildTitleTexts(TJA.Header headers)
+        {
+            var english = FirstNonEmpty(headers.TitleEn, headers.Title, headers.TitleJa);
+            var japanese = FirstNonEmpty(headers.TitleJa, headers.Title, english);
+
+            return new LocalizedTextSet
+            {
+                Japanese = japanese,
+                English = english,
+                ChineseTraditional = FirstNonEmpty(headers.TitleChineseTraditional, english),
+                Korean = FirstNonEmpty(headers.TitleKo, english),
+                ChineseSimplified = FirstNonEmpty(headers.TitleChineseSimplified, english)
+            };
+        }
+
+        private static LocalizedTextSet BuildSubtitleTexts(TJA.Header headers)
+        {
+            var english = FirstNonEmpty(headers.SubtitleEn, headers.Subtitle, headers.SubtitleJa);
+            var japanese = FirstNonEmpty(headers.SubtitleJa, headers.Subtitle, english);
+
+            return new LocalizedTextSet
+            {
+                Japanese = japanese,
+                English = english,
+                ChineseTraditional = FirstNonEmpty(headers.SubtitleChineseTraditional, english),
+                Korean = FirstNonEmpty(headers.SubtitleKo, english),
+                ChineseSimplified = FirstNonEmpty(headers.SubtitleChineseSimplified, english)
+            };
+        }
+
+        private static LocalizedTextSet BuildDetailTexts()
+        {
+            // TITLEJA belongs in the Japanese title field, not in song_detail. Keep the
+            // detail row available for later editing without inventing duplicate text.
+            return new LocalizedTextSet();
+        }
+
+        private static string FirstNonEmpty(params string[] values) =>
+            values?.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
+
+        private static LocalizedWord CreateLocalizedWord(string key, LocalizedTextSet texts)
+        {
+            texts ??= new LocalizedTextSet();
+            var typed = DatatableTypes.CreateWord(key, texts.Japanese);
+            var raw = new JsonObject
+            {
+                ["key"] = key,
+                ["japaneseText"] = texts.Japanese,
+                ["japaneseFontType"] = 0,
+                ["englishUsText"] = texts.English,
+                ["englishUsFontType"] = 1,
+                ["chineseTText"] = texts.ChineseTraditional,
+                ["chineseTFontType"] = 2,
+                ["koreanText"] = texts.Korean,
+                ["koreanFontType"] = 3,
+                ["chineseSText"] = texts.ChineseSimplified,
+                ["chineseSFontType"] = 4
+            };
+
+            // Some datatable definitions expose every language as typed properties while
+            // older definitions expose Japanese only. Populate whatever exists, then keep
+            // the raw row as the lossless source for the remaining fields.
+            SetTypedWordProperty(typed, "JapaneseText", texts.Japanese);
+            SetTypedWordProperty(typed, "JapaneseFontType", 0);
+            SetTypedWordProperty(typed, "EnglishUsText", texts.English);
+            SetTypedWordProperty(typed, "EnglishUsFontType", 1);
+            SetTypedWordProperty(typed, "ChineseTText", texts.ChineseTraditional);
+            SetTypedWordProperty(typed, "ChineseTFontType", 2);
+            SetTypedWordProperty(typed, "KoreanText", texts.Korean);
+            SetTypedWordProperty(typed, "KoreanFontType", 3);
+            SetTypedWordProperty(typed, "ChineseSText", texts.ChineseSimplified);
+            SetTypedWordProperty(typed, "ChineseSFontType", 4);
+
+            return new LocalizedWord { Typed = typed, Raw = raw };
+        }
+
+        private static void SetTypedWordProperty(object target, string propertyName, object value)
+        {
+            if (target == null) return;
+            var property = target.GetType().GetProperty(propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+            if (property == null || !property.CanWrite) return;
+            property.SetValue(target, value);
+        }
+
         private void Analyze()
         {
             if (string.IsNullOrWhiteSpace(AudioPath) || !File.Exists(AudioPath))
@@ -238,9 +367,16 @@ namespace TaikoSoundEditor.Project
             if (UniqueId <= 0 || UniqueId > ushort.MaxValue)
                 errors.Add("The unique id must fit the NUS3BANK 16-bit song-id field (1-65535).");
 
-            Genre = ParseGenre(Tja.Headers.Genre, out var knownGenre);
-            if (!knownGenre)
-                warnings.Add($"Unknown TJA genre '{Tja.Headers.Genre}'. The initial category will be Pop.");
+            if (genreOverride.HasValue)
+            {
+                Genre = genreOverride.Value;
+            }
+            else
+            {
+                Genre = ParseGenre(Tja.Headers.Genre, out var knownGenre);
+                if (!knownGenre)
+                    warnings.Add($"Unknown TJA genre '{Tja.Headers.Genre}'. The initial category will be Pop.");
+            }
 
             foreach (var difficulty in RequiredDifficulties.Where(value => !Tja.Courses.ContainsKey(value)))
             {
@@ -375,41 +511,12 @@ namespace TaikoSoundEditor.Project
             ApplyCourse(info, 2);
             ApplyCourse(info, 3);
             ApplyCourse(info, 4);
-
-            info.RendaTimeEasy = 0;
-            info.RendaTimeNormal = 0;
-            info.RendaTimeHard = 0;
-            info.RendaTimeMania = 0;
-            info.RendaTimeUra = 0;
-            info.FuusenTotalEasy = 0;
-            info.FuusenTotalNormal = 0;
-            info.FuusenTotalHard = 0;
-            info.FuusenTotalMania = 0;
-            info.FuusenTotalUra = 0;
-
-            info.ShinutiEasy = SafeShinuti(info.ShinutiScoreEasy, info.EasyOnpuNum);
-            info.ShinutiNormal = SafeShinuti(info.ShinutiScoreNormal, info.NormalOnpuNum);
-            info.ShinutiHard = SafeShinuti(info.ShinutiScoreHard, info.HardOnpuNum);
-            info.ShinutiMania = SafeShinuti(info.ShinutiScoreMania, info.ManiaOnpuNum);
-            info.ShinutiEasyDuet = SafeShinuti(info.ShinutiScoreEasyDuet, info.EasyOnpuNum);
-            info.ShinutiNormalDuet = SafeShinuti(info.ShinutiScoreNormalDuet, info.NormalOnpuNum);
-            info.ShinutiHardDuet = SafeShinuti(info.ShinutiScoreHardDuet, info.HardOnpuNum);
-            info.ShinutiManiaDuet = SafeShinuti(info.ShinutiScoreManiaDuet, info.ManiaOnpuNum);
-
-            if (Tja.Courses.ContainsKey(4))
-            {
-                if (info.ShinutiScoreUra == 0) info.ShinutiScoreUra = 1002320;
-                if (info.ShinutiScoreUraDuet == 0) info.ShinutiScoreUraDuet = 1002320;
-                info.ShinutiUra = SafeShinuti(info.ShinutiScoreUra, info.UraOnpuNum);
-                info.ShinutiUraDuet = SafeShinuti(info.ShinutiScoreUraDuet, info.UraOnpuNum);
-            }
-
             return info;
         }
 
         private IMusicAttribute CreateMusicAttribute()
         {
-            var attribute = DatatableTypes.CreateMusicAttribute(SongId, UniqueId, true);
+            var attribute = DatatableTypes.CreateMusicAttribute(SongId, UniqueId, markAsNew);
             attribute.CanPlayUra = Tja.Courses.ContainsKey(4);
             return attribute;
         }
@@ -417,32 +524,54 @@ namespace TaikoSoundEditor.Project
         private void ApplyCourse(IMusicInfo info, int difficulty)
         {
             if (!Tja.Courses.TryGetValue(difficulty, out var course)) return;
+            var stats = TjaCourseStatistics.Calculate(Tja.Headers, course);
+
             switch (difficulty)
             {
                 case 0:
-                    info.EasyOnpuNum = course.NotesCount;
+                    info.EasyOnpuNum = stats.NoteCount;
                     info.StarEasy = course.Headers.Level;
                     info.BranchEasy = course.HasBranches;
+                    info.RendaTimeEasy = stats.RendaTimeSeconds;
+                    info.FuusenTotalEasy = stats.FuusenTotal;
+                    info.ShinutiEasy = info.ShinutiEasyDuet = stats.Shinuti;
+                    info.ShinutiScoreEasy = info.ShinutiScoreEasyDuet = stats.ShinutiScore;
                     break;
                 case 1:
-                    info.NormalOnpuNum = course.NotesCount;
+                    info.NormalOnpuNum = stats.NoteCount;
                     info.StarNormal = course.Headers.Level;
                     info.BranchNormal = course.HasBranches;
+                    info.RendaTimeNormal = stats.RendaTimeSeconds;
+                    info.FuusenTotalNormal = stats.FuusenTotal;
+                    info.ShinutiNormal = info.ShinutiNormalDuet = stats.Shinuti;
+                    info.ShinutiScoreNormal = info.ShinutiScoreNormalDuet = stats.ShinutiScore;
                     break;
                 case 2:
-                    info.HardOnpuNum = course.NotesCount;
+                    info.HardOnpuNum = stats.NoteCount;
                     info.StarHard = course.Headers.Level;
                     info.BranchHard = course.HasBranches;
+                    info.RendaTimeHard = stats.RendaTimeSeconds;
+                    info.FuusenTotalHard = stats.FuusenTotal;
+                    info.ShinutiHard = info.ShinutiHardDuet = stats.Shinuti;
+                    info.ShinutiScoreHard = info.ShinutiScoreHardDuet = stats.ShinutiScore;
                     break;
                 case 3:
-                    info.ManiaOnpuNum = course.NotesCount;
+                    info.ManiaOnpuNum = stats.NoteCount;
                     info.StarMania = course.Headers.Level;
                     info.BranchMania = course.HasBranches;
+                    info.RendaTimeMania = stats.RendaTimeSeconds;
+                    info.FuusenTotalMania = stats.FuusenTotal;
+                    info.ShinutiMania = info.ShinutiManiaDuet = stats.Shinuti;
+                    info.ShinutiScoreMania = info.ShinutiScoreManiaDuet = stats.ShinutiScore;
                     break;
                 case 4:
-                    info.UraOnpuNum = course.NotesCount;
+                    info.UraOnpuNum = stats.NoteCount;
                     info.StarUra = course.Headers.Level;
                     info.BranchUra = course.HasBranches;
+                    info.RendaTimeUra = stats.RendaTimeSeconds;
+                    info.FuusenTotalUra = stats.FuusenTotal;
+                    info.ShinutiUra = info.ShinutiUraDuet = stats.Shinuti;
+                    info.ShinutiScoreUra = info.ShinutiScoreUraDuet = stats.ShinutiScore;
                     break;
             }
         }
@@ -460,11 +589,6 @@ namespace TaikoSoundEditor.Project
                 3 => "oni",
                 _ => "ura"
             }) ?? 3;
-        }
-
-        private static int SafeShinuti(int score, int noteCount)
-        {
-            return noteCount <= 0 ? 0 : score / noteCount / 10 * 10;
         }
 
         private static Genre ParseGenre(string value, out bool known)
@@ -496,6 +620,7 @@ namespace TaikoSoundEditor.Project
         }
 
         private static string Format(float value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+        private static string Format(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
 
         private static void Deduplicate(List<string> items)
         {

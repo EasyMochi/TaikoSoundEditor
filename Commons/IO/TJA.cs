@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -36,7 +36,13 @@ namespace TaikoSoundEditor.Commons.IO
 
         static readonly string[] HEADER_GLOBAL = new string[] 
         {
-            "TITLE", "TITLEJA", "SUBTITLE", "BPM", "WAVE", "OFFSET", "DEMOSTART","GENRE",
+            "TITLE", "TITLEEN", "TITLEUS", "TITLEJA", "TITLEJP", "TITLEKO", "TITLEKR",
+            "TITLECN", "TITLESC", "TITLECHS", "TITLEZH", "TITLEZHS",
+            "TITLETW", "TITLETC", "TITLECHT", "TITLEZHT",
+            "SUBTITLE", "SUBTITLEEN", "SUBTITLEUS", "SUBTITLEJA", "SUBTITLEJP",
+            "SUBTITLEKO", "SUBTITLEKR", "SUBTITLECN", "SUBTITLESC", "SUBTITLECHS",
+            "SUBTITLEZH", "SUBTITLEZHS", "SUBTITLETW", "SUBTITLETC", "SUBTITLECHT",
+            "SUBTITLEZHT", "BPM", "WAVE", "OFFSET", "DEMOSTART", "GENRE",
         };
 
         static readonly string[] HEADER_COURSE = new string[]
@@ -49,6 +55,17 @@ namespace TaikoSoundEditor.Commons.IO
             "START","END","GOGOSTART","GOGOEND","MEASURE","SCROLL","BPMCHANGE","DELAY","BRANCHSTART","BRANCHEND","SECTION","N","E","M","LEVELHOLD","BMSCROLL","HBSCROLL","BARLINEOFF","BARLINEON","TTBREAK",
         };
 
+        private static int[] ParseIntegerValues(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return Array.Empty<int>();
+
+            return Regex.Matches(value, @"[-+]?\d+")
+                .Cast<Match>()
+                .Select(match => Number.ParseInt(match.Value))
+                .ToArray();
+        }
+
         public Line ParseLine(string line)
         {
             Match match = null;
@@ -60,7 +77,7 @@ namespace TaikoSoundEditor.Commons.IO
                 line = line.Substring(0, match.Index).Trim();
             }            
 
-            if ((match = line.Match("^([A-Z]+):(.+)", "i")) != null)
+            if ((match = line.Match("^([A-Z]+):(.*)", "i")) != null)
             {
                 var nameUpper = match.Groups[1].Value.ToUpper();
                 var value = match.Groups[2].Value;
@@ -128,13 +145,32 @@ namespace TaikoSoundEditor.Commons.IO
                     else if (line.Name == "LEVEL")
                         headers.Level = Number.ParseInt(line.Value);
                     else if (line.Name == "BALLOON")
-                        headers.Balloon = new Regex("[^0-9]").Split(line.Value).Where(_ => _ != "").Select(Number.ParseInt).ToArray();
+                        headers.Balloon = ParseIntegerValues(line.Value);
                     else if (line.Name == "SCOREINIT")
-                        headers.ScoreInit = Number.ParseInt(line.Value);
+                    {
+                        // Taiko-san Jiro permits multiple SCOREINIT values, for example
+                        // SCOREINIT:510,1740. The first value is the ordinary score-init
+                        // value; the optional second value is used by the alternate/stable
+                        // scoring mode. Keep both instead of trying to parse the whole line
+                        // as one integer.
+                        var values = ParseIntegerValues(line.Value);
+                        if (values.Length > 0) headers.ScoreInit = values[0];
+                        if (values.Length > 1) headers.ScoreInitSecondary = values[1];
+                    }
                     else if (line.Name == "SCOREDIFF")
-                        headers.ScoreDiff = Number.ParseInt(line.Value);
+                    {
+                        // Multi-value SCOREDIFF and the historical `d` suffix are legal TJA.
+                        // Extract the numeric components so values such as `1000d` and
+                        // `130,250` do not abort the entire import.
+                        var values = ParseIntegerValues(line.Value);
+                        if (values.Length > 0) headers.ScoreDiff = values[0];
+                        if (values.Length > 1) headers.ScoreDiffSecondary = values[1];
+                    }
                     else if (line.Name == "TTROWBEAT")
-                        headers.TTRowBeat = Number.ParseInt(line.Value);
+                    {
+                        var values = ParseIntegerValues(line.Value);
+                        if (values.Length > 0) headers.TTRowBeat = values[0];
+                    }
                 }
                 else if(line.Type=="command")
                 {
@@ -190,6 +226,8 @@ namespace TaikoSoundEditor.Commons.IO
                                 measureEvents.Add(new MeasureEvent("scroll", measureData.Length, Number.ParseFloat(line.Value)));
                             else if (line.Name == "BPMCHANGE")
                                 measureEvents.Add(new MeasureEvent("bpm", measureData.Length, Number.ParseFloat(line.Value)));
+                            else if (line.Name == "DELAY")
+                                measureEvents.Add(new MeasureEvent("delay", measureData.Length, Number.ParseFloat(line.Value)));
                             else if (line.Name == "TTBREAK")
                                 measureProperties["ttBreak"] = true;
                             else if (line.Name == "LEVELHOLD")
@@ -206,7 +244,8 @@ namespace TaikoSoundEditor.Commons.IO
                     if (data.EndsWith(","))
                     {
                         measureData += data.Substring(0, data.Length - 1);  //data.slice(0, -1);
-                        var measure = new Measure(new int[] { measureDividend, measureDivisor }, measureProperties, measureData, measureEvents.ToList());
+                        var measure = new Measure(new int[] { measureDividend, measureDivisor },
+                            new Dictionary<string, bool>(measureProperties), measureData, measureEvents.ToList());
                         measures.Add(measure);
                         measureData = "";
                         measureEvents.Clear();
@@ -215,27 +254,6 @@ namespace TaikoSoundEditor.Commons.IO
                     else measureData += data;
                 }
             } // foreach
-
-            if(measures.Count>0)
-            {
-                // Make first BPM event
-                var firstBPMEventFound = false;
-                for (var i = 0; i < measures[0].Events.Count; i++) 
-                {
-                    var evt = measures[0].Events[i];
-
-                    if (evt.Name == "bpm" && evt.Position == 0) 
-                    {
-                        firstBPMEventFound = true;
-                        break;
-                    }
-                }
-
-                if (!firstBPMEventFound)
-                {
-                    measures[0].Events = measures[0].Events.Prepend(new MeasureEvent("bmp", 0, tjaHeaders.Bpm)).ToList();
-                }
-            }
 
             // Helper values
             var course = 0;
@@ -254,21 +272,37 @@ namespace TaikoSoundEditor.Commons.IO
 
             Logger.Info($"Course difficulty =  {course}");
 
-            if (measureData!="" || measureData!=null)
+            if (!string.IsNullOrEmpty(measureData))
             {
-                measures.Add(new Measure(new int[] { measureDividend, measureDivisor }, measureProperties, measureData, measureEvents));
+                measures.Add(new Measure(new int[] { measureDividend, measureDivisor },
+                    new Dictionary<string, bool>(measureProperties), measureData, measureEvents.ToList()));
             }
-            else
+            else if (measureEvents.Count > 0 && measures.Count > 0)
             {
-                foreach(var ev in measureEvents)
+                foreach (var ev in measureEvents)
                 {
                     ev.Position = measures[measures.Count - 1].MeasureData.Length;
                     measures[measures.Count - 1].Events.Add(ev);
                 }
             }
+
+            if (measures.Count > 0 && !measures[0].Events.Any(evt =>
+                    string.Equals(evt.Name, "bpm", StringComparison.OrdinalIgnoreCase) && evt.Position == 0))
+            {
+                measures[0].Events = measures[0].Events
+                    .Prepend(new MeasureEvent("bpm", 0, tjaHeaders.Bpm)).ToList();
+            }
+
             var c = new Course(course, headers, measures) { HasBranches = hasBranches };
             Logger.Info($"Course created : {c}");
             return c;
+        }
+
+
+        private static string NormalizeSubtitle(string value)
+        {
+            value ??= string.Empty;
+            return value.StartsWith("--", StringComparison.Ordinal) ? value.Substring(2) : value;
         }
 
         public void Parse(string[] lines)
@@ -293,10 +327,34 @@ namespace TaikoSoundEditor.Commons.IO
 
                     if (parsed.Name == "TITLE")
                         headers.Title = parsed.Value;
-                    if (parsed.Name == "TITLEJA")
+                    if (parsed.Name == "TITLEEN" || parsed.Name == "TITLEUS")
+                        headers.TitleEn = parsed.Value;
+                    if (parsed.Name == "TITLEJA" || parsed.Name == "TITLEJP")
                         headers.TitleJa = parsed.Value;
+                    if (parsed.Name == "TITLEKO" || parsed.Name == "TITLEKR")
+                        headers.TitleKo = parsed.Value;
+                    if (parsed.Name == "TITLECN" || parsed.Name == "TITLESC" ||
+                        parsed.Name == "TITLECHS" || parsed.Name == "TITLEZH" ||
+                        parsed.Name == "TITLEZHS")
+                        headers.TitleChineseSimplified = parsed.Value;
+                    if (parsed.Name == "TITLETW" || parsed.Name == "TITLETC" ||
+                        parsed.Name == "TITLECHT" || parsed.Name == "TITLEZHT")
+                        headers.TitleChineseTraditional = parsed.Value;
                     if (parsed.Name == "SUBTITLE")
-                        headers.Subtitle = parsed.Value.StartsWith("--") ? parsed.Value.Substring(2) : parsed.Value;
+                        headers.Subtitle = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLEEN" || parsed.Name == "SUBTITLEUS")
+                        headers.SubtitleEn = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLEJA" || parsed.Name == "SUBTITLEJP")
+                        headers.SubtitleJa = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLEKO" || parsed.Name == "SUBTITLEKR")
+                        headers.SubtitleKo = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLECN" || parsed.Name == "SUBTITLESC" ||
+                        parsed.Name == "SUBTITLECHS" || parsed.Name == "SUBTITLEZH" ||
+                        parsed.Name == "SUBTITLEZHS")
+                        headers.SubtitleChineseSimplified = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLETW" || parsed.Name == "SUBTITLETC" ||
+                        parsed.Name == "SUBTITLECHT" || parsed.Name == "SUBTITLEZHT")
+                        headers.SubtitleChineseTraditional = NormalizeSubtitle(parsed.Value);
                     if (parsed.Name == "BPM")
                         headers.Bpm = Number.ParseFloat(parsed.Value);
                     if (parsed.Name == "WAVE")
@@ -369,7 +427,7 @@ namespace TaikoSoundEditor.Commons.IO
                 get
                 {
                     Debug.WriteLine(string.Join("", Measures.Select(_ => _.MeasureData)));
-                    return string.Join("", Measures.Select(_ => _.MeasureData)).Where(c => "1234".Contains(c)).Count();
+                    return string.Join("", Measures.Select(_ => _.MeasureData)).Count(c => "1234AB".Contains(c));
                 }
                 //get => Converted.Notes.Where(n => typeNote.Contains(n.Type)).Count();            
             }
@@ -413,8 +471,17 @@ namespace TaikoSoundEditor.Commons.IO
         public class Header
         {
             public string Title { get; set; } = "";
-            public string Subtitle { get; set; } = "";
+            public string TitleEn { get; set; } = "";
             public string TitleJa { get; set; } = "";
+            public string TitleKo { get; set; } = "";
+            public string TitleChineseSimplified { get; set; } = "";
+            public string TitleChineseTraditional { get; set; } = "";
+            public string Subtitle { get; set; } = "";
+            public string SubtitleEn { get; set; } = "";
+            public string SubtitleJa { get; set; } = "";
+            public string SubtitleKo { get; set; } = "";
+            public string SubtitleChineseSimplified { get; set; } = "";
+            public string SubtitleChineseTraditional { get; set; } = "";
             public float Bpm { get; set; } = 120;
             public string Wave { get; set; } = "";
             public float Offset { get; set; } = 0;
@@ -429,10 +496,14 @@ namespace TaikoSoundEditor.Commons.IO
             public int Level { get; set; } = 0;
             public int[] Balloon { get; set; } = new int[0];
             public int ScoreInit { get; set; } = 100;
+            public int ScoreInitSecondary { get; set; } = 0;
             public int ScoreDiff { get; set; } = 100;
+            public int ScoreDiffSecondary { get; set; } = 0;
             public int TTRowBeat { get; set; } = 16;
 
-            public override string ToString() => $"CH({Course}, {Level}, {string.Join(";",Balloon)}, {ScoreInit}, {ScoreDiff}, {TTRowBeat})";            
+            public override string ToString() =>
+                $"CH({Course}, {Level}, {string.Join(";", Balloon)}, " +
+                $"{ScoreInit}/{ScoreInitSecondary}, {ScoreDiff}/{ScoreDiffSecondary}, {TTRowBeat})";
         }
 
         public static List<byte[]> RunTja2Fumen(string sourcePath)
@@ -503,7 +574,65 @@ namespace TaikoSoundEditor.Commons.IO
                 }                
             }
 
+            // The bundled converter currently emits Hard/Oni judgement windows for
+            // every course. Normalize each generated chart to Nijiiro's per-course
+            // timing windows before it is staged or exported.
+            char[] generatedDifficulties = { 'e', 'h', 'm', 'n', 'x' };
+            for (int i = 0; i < result.Count; i++)
+                ApplyTimingWindows(result[i], generatedDifficulties[i % generatedDifficulties.Length]);
+
             return result;
+        }
+
+        private static void ApplyTimingWindows(byte[] fumen, char difficulty)
+        {
+            if (fumen == null || fumen.Length == 0) return;
+            if (fumen.Length < 520)
+                throw new InvalidDataException("tja2fumen produced a fumen smaller than its 520-byte header.");
+
+            float good;
+            float ok;
+            float bad;
+            switch (difficulty)
+            {
+                case 'e':
+                case 'n':
+                    good = 41.7083358764648f;
+                    ok = 108.441665649414f;
+                    bad = 125.125f;
+                    break;
+                case 'h':
+                case 'm':
+                case 'x':
+                    good = 25.0250015258789f;
+                    ok = 75.075004577637f;
+                    bad = 108.441665649414f;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(difficulty), difficulty,
+                        "Unknown fumen difficulty suffix.");
+            }
+
+            // tja2fumen writes little-endian fumens, but retain big-endian support
+            // because some official/legacy fumens use the opposite byte order.
+            uint measureCountLittle = BitConverter.ToUInt32(fumen, 512);
+            uint measureCountBig = ((uint)fumen[512] << 24) | ((uint)fumen[513] << 16) |
+                                   ((uint)fumen[514] << 8) | fumen[515];
+            bool bigEndian = measureCountBig < measureCountLittle;
+
+            for (int i = 0; i < 36; i++)
+            {
+                WriteFumenFloat(fumen, (i * 3 + 0) * 4, good, bigEndian);
+                WriteFumenFloat(fumen, (i * 3 + 1) * 4, ok, bigEndian);
+                WriteFumenFloat(fumen, (i * 3 + 2) * 4, bad, bigEndian);
+            }
+        }
+
+        private static void WriteFumenFloat(byte[] data, int offset, float value, bool bigEndian)
+        {
+            var bytes = BitConverter.GetBytes(value);
+            if (BitConverter.IsLittleEndian == bigEndian) Array.Reverse(bytes);
+            Buffer.BlockCopy(bytes, 0, data, offset, bytes.Length);
         }
 
         public override string ToString() => $"{Headers}\n{string.Join("\n", Courses)}";
@@ -523,7 +652,7 @@ namespace TaikoSoundEditor.Commons.IO
             for (int m = 0; m < course.Measures.Count; m++)
             {
                 var measure = course.Measures[m];
-                float length = measure.Length[0] / measure.Length[1] * 4;
+                float length = measure.Length[1] == 0 ? 4f : (float)measure.Length[0] / measure.Length[1] * 4f;
                 for (int e = 0; e < measure.Events.Count; e++)
                 {
                     var evt = measure.Events[e];
