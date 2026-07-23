@@ -49,6 +49,17 @@ namespace TaikoSoundEditor.Commons.IO
             "START","END","GOGOSTART","GOGOEND","MEASURE","SCROLL","BPMCHANGE","DELAY","BRANCHSTART","BRANCHEND","SECTION","N","E","M","LEVELHOLD","BMSCROLL","HBSCROLL","BARLINEOFF","BARLINEON","TTBREAK",
         };
 
+        private static int[] ParseIntegerValues(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return Array.Empty<int>();
+
+            return Regex.Matches(value, @"[-+]?\d+")
+                .Cast<Match>()
+                .Select(match => Number.ParseInt(match.Value))
+                .ToArray();
+        }
+
         public Line ParseLine(string line)
         {
             Match match = null;
@@ -128,13 +139,32 @@ namespace TaikoSoundEditor.Commons.IO
                     else if (line.Name == "LEVEL")
                         headers.Level = Number.ParseInt(line.Value);
                     else if (line.Name == "BALLOON")
-                        headers.Balloon = new Regex("[^0-9]").Split(line.Value).Where(_ => _ != "").Select(Number.ParseInt).ToArray();
+                        headers.Balloon = ParseIntegerValues(line.Value);
                     else if (line.Name == "SCOREINIT")
-                        headers.ScoreInit = Number.ParseInt(line.Value);
+                    {
+                        // Taiko-san Jiro permits multiple SCOREINIT values, for example
+                        // SCOREINIT:510,1740. The first value is the ordinary score-init
+                        // value; the optional second value is used by the alternate/stable
+                        // scoring mode. Keep both instead of trying to parse the whole line
+                        // as one integer.
+                        var values = ParseIntegerValues(line.Value);
+                        if (values.Length > 0) headers.ScoreInit = values[0];
+                        if (values.Length > 1) headers.ScoreInitSecondary = values[1];
+                    }
                     else if (line.Name == "SCOREDIFF")
-                        headers.ScoreDiff = Number.ParseInt(line.Value);
+                    {
+                        // Multi-value SCOREDIFF and the historical `d` suffix are legal TJA.
+                        // Extract the numeric components so values such as `1000d` and
+                        // `130,250` do not abort the entire import.
+                        var values = ParseIntegerValues(line.Value);
+                        if (values.Length > 0) headers.ScoreDiff = values[0];
+                        if (values.Length > 1) headers.ScoreDiffSecondary = values[1];
+                    }
                     else if (line.Name == "TTROWBEAT")
-                        headers.TTRowBeat = Number.ParseInt(line.Value);
+                    {
+                        var values = ParseIntegerValues(line.Value);
+                        if (values.Length > 0) headers.TTRowBeat = values[0];
+                    }
                 }
                 else if(line.Type=="command")
                 {
@@ -420,10 +450,14 @@ namespace TaikoSoundEditor.Commons.IO
             public int Level { get; set; } = 0;
             public int[] Balloon { get; set; } = new int[0];
             public int ScoreInit { get; set; } = 100;
+            public int ScoreInitSecondary { get; set; } = 0;
             public int ScoreDiff { get; set; } = 100;
+            public int ScoreDiffSecondary { get; set; } = 0;
             public int TTRowBeat { get; set; } = 16;
 
-            public override string ToString() => $"CH({Course}, {Level}, {string.Join(";",Balloon)}, {ScoreInit}, {ScoreDiff}, {TTRowBeat})";            
+            public override string ToString() =>
+                $"CH({Course}, {Level}, {string.Join(";", Balloon)}, " +
+                $"{ScoreInit}/{ScoreInitSecondary}, {ScoreDiff}/{ScoreDiffSecondary}, {TTRowBeat})";
         }
 
         public static List<byte[]> RunTja2Fumen(string sourcePath)

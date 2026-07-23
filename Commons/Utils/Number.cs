@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Globalization;
 
 namespace TaikoSoundEditor.Commons.Utils
 {
@@ -8,7 +9,7 @@ namespace TaikoSoundEditor.Commons.Utils
         {
             try
             {
-                return int.Parse(value);
+                return int.Parse(value, NumberStyles.Integer, CultureInfo.InvariantCulture);
             }
             catch(FormatException ex)
             {
@@ -20,7 +21,7 @@ namespace TaikoSoundEditor.Commons.Utils
         {
             try
             {
-                return float.Parse(value);
+                return float.Parse(value, NumberStyles.Float, CultureInfo.InvariantCulture);
             }
             catch (FormatException ex)
             {
