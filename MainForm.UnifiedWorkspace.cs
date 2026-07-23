@@ -74,6 +74,7 @@ namespace TaikoSoundEditor
             BuildUnifiedLandingPage();
             BuildUnifiedImportPage();
             BuildUnifiedWorkspacePage();
+            InitializeMultilingualWordEditor();
             HookUnifiedWorkspaceEvents();
             ResetUnifiedStagedState();
             ResumeLayout(true);
@@ -366,22 +367,65 @@ namespace TaikoSoundEditor
                 var item = unifiedSongsBox.SelectedItem as UnifiedSongItem;
                 if (item == null || item.Deleted)
                 {
-                    LoadedMusicBox.SelectedItem = null;
-                    NewSoundsBox.SelectedItem = null;
-                    unifiedSelectionHeading.Text = item?.Deleted == true ? $"{item.Id} is pending deletion" : "Select a song";
+                    indexChanging = true;
+                    try
+                    {
+                        LoadedMusicBox.SelectedItem = null;
+                        NewSoundsBox.SelectedItem = null;
+                    }
+                    finally
+                    {
+                        indexChanging = false;
+                    }
+
+                    ClearSimpleEditor();
+                    unifiedSelectionHeading.Text = item?.Deleted == true
+                        ? $"{item.Id} is pending deletion"
+                        : "Select a song";
                     return;
                 }
 
                 if (item.Source is IMusicInfo info)
                 {
-                    NewSoundsBox.SelectedItem = null;
-                    LoadedMusicBox.SelectedItem = info;
+                    indexChanging = true;
+                    try
+                    {
+                        NewSoundsBox.SelectedItem = null;
+                        LoadedMusicBox.SelectedItem = LoadedMusicBox.Items.Cast<IMusicInfo>()
+                            .FirstOrDefault(candidate =>
+                                candidate.UniqueId == info.UniqueId &&
+                                string.Equals(candidate.Id, info.Id, StringComparison.Ordinal));
+                    }
+                    finally
+                    {
+                        indexChanging = false;
+                    }
+
+                    // Do not depend on SelectedIndexChanged. The hidden legacy list may
+                    // already contain this selection, in which case WinForms raises no event.
+                    LoadMusicInfo(info);
                 }
                 else if (item.Source is NewSongData song)
                 {
-                    LoadedMusicBox.SelectedItem = null;
-                    NewSoundsBox.SelectedItem = song;
+                    indexChanging = true;
+                    try
+                    {
+                        LoadedMusicBox.SelectedItem = null;
+                        NewSoundsBox.SelectedItem = AddedMusic.FirstOrDefault(candidate =>
+                            candidate.UniqueId == song.UniqueId &&
+                            string.Equals(candidate.Id, song.Id, StringComparison.Ordinal));
+                    }
+                    finally
+                    {
+                        indexChanging = false;
+                    }
+
+                    LoadNewSongData(song);
                 }
+
+                if (SoundViewTab.SelectedTab == MusicOrderTab)
+                    SoundViewTab.SelectedTab = SoundViewerSimple;
+
                 unifiedSelectionHeading.Text = $"Selected: {item.Id}  ·  UID {item.UniqueId}";
             }
             finally

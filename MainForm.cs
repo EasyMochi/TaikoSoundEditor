@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -14,6 +15,15 @@ namespace TaikoSoundEditor
         public MainForm()
         {
             InitializeComponent();
+
+            // The WinForms designer instantiates the form but must not execute runtime
+            // initialization, file access, data binding, or UI reparenting.
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+
+            Load += MainForm_RuntimeLoad;
+            Shown += MainForm_RuntimeShown;
+
             //Init button event handlers
             MusicAttributePathSelector.PathChanged += MusicAttributePathSelector_PathChanged;
             MusicOrderPathSelector.PathChanged += MusicOrderPathSelector_PathChanged;
@@ -30,6 +40,11 @@ namespace TaikoSoundEditor
             LoadPreferences();
         }
 
+        private bool IsInDesignMode =>
+            LicenseManager.UsageMode == LicenseUsageMode.Designtime ||
+            DesignMode ||
+            Site?.DesignMode == true;
+
         private void TabControl_SelectedIndexChanged(object sender, EventArgs e) =>
             Logger.Info($"Commuted to tab {TabControl.SelectedIndex}.{TabControl.Name}");
 
@@ -42,64 +57,117 @@ namespace TaikoSoundEditor
 
             if (item == null)
             {
-                MusicInfoGrid.SelectedObject = null;
-                MusicAttributesGrid.SelectedObject = null;
-                MusicOrderGrid.SelectedObject = null;
-                WordsGrid.SelectedObject = null;
-                WordSubGrid.SelectedObject = null;
-                WordDetailGrid.SelectedObject = null;
+                ClearSimpleEditor();
                 return;
             }
 
+            var attribute = MusicAttributes?.GetByUniqueId(item.UniqueId);
+            var order = MusicOrders?.GetByUniqueId(item.UniqueId);
+            var title = WordList?.GetBySong(item.Id);
+            var subtitle = WordList?.GetBySongSub(item.Id);
+            var detail = WordList?.GetBySongDetail(item.Id);
+
             MusicInfoGrid.SelectedObject = item;
-            MusicAttributesGrid.SelectedObject = MusicAttributes.GetByUniqueId(item.UniqueId);
-            MusicOrderGrid.SelectedObject = MusicOrders.GetByUniqueId(item.UniqueId);
-            WordsGrid.SelectedObject = WordList.GetBySong(item.Id);
-            WordSubGrid.SelectedObject = WordList.GetBySongSub(item.Id);
-            WordDetailGrid.SelectedObject = WordList.GetBySongDetail(item.Id);
+            MusicAttributesGrid.SelectedObject = attribute;
+            MusicOrderGrid.SelectedObject = order;
+            WordsGrid.SelectedObject = title;
+            WordSubGrid.SelectedObject = subtitle;
+            WordDetailGrid.SelectedObject = detail;
 
             simpleBoxLoading = true;
-            SimpleIdBox.Text = item.Id;
-            SimpleTitleBox.Text = WordList.GetBySong(item.Id)?.JapaneseText ?? throw new ArgumentNullException($"Title for '{item.Id}' not found in wordlist");
-            SimpleSubtitleBox.Text = WordList.GetBySongSub(item.Id)?.JapaneseText ?? throw new ArgumentNullException($"Subtitle for '{item.Id}' not found in wordlist");
-            SimpleDetailBox.Text = WordList.GetBySongDetail(item.Id)?.JapaneseText ?? throw new ArgumentNullException($"Detail for '{item.Id}' not found in wordlist");
-            SimpleGenreBox.SelectedItem = MusicOrders.GetByUniqueId(item.UniqueId)?.Genre ?? throw new ArgumentNullException($"Music order entry #{item.UniqueId} could not be found");
-            SimpleStarEasyBox.Value = item.StarEasy;
-            SimpleStarNormalBox.Value = item.StarNormal;
-            SimpleStarHardBox.Value = item.StarHard;
-            SimpleStarManiaBox.Value = item.StarMania;
-            SimpleStarUraBox.Value = item.StarUra;
-            SimpleStarUraBox.Enabled = MusicAttributes.GetByUniqueId(item.UniqueId).CanPlayUra;
-            simpleBoxLoading = false;
+            try
+            {
+                SimpleIdBox.Text = item.Id ?? string.Empty;
+                SimpleTitleBox.Text = title?.JapaneseText ?? string.Empty;
+                SimpleSubtitleBox.Text = subtitle?.JapaneseText ?? string.Empty;
+                SimpleDetailBox.Text = detail?.JapaneseText ?? string.Empty;
+                SimpleGenreBox.SelectedItem = order?.Genre ?? item.Genre;
+                SimpleStarEasyBox.Value = item.StarEasy;
+                SimpleStarNormalBox.Value = item.StarNormal;
+                SimpleStarHardBox.Value = item.StarHard;
+                SimpleStarManiaBox.Value = item.StarMania;
+                SimpleStarUraBox.Value = item.StarUra;
+                SimpleStarUraBox.Enabled = attribute?.CanPlayUra == true;
+            }
+            finally
+            {
+                simpleBoxLoading = false;
+            }
+
+            LoadMultilingualWordEditor(item.Id);
         }
 
         private void LoadNewSongData(NewSongData item)
         {
             Logger.Info($"Selection Changed NewSongData: {item}");
             Logger.Info($"Showing properties for NewSongData: {item}");
-            MusicInfoGrid.SelectedObject = item?.MusicInfo;
-            MusicAttributesGrid.SelectedObject = item?.MusicAttribute;
-            MusicOrderGrid.SelectedObject = item?.MusicOrder;
-            WordsGrid.SelectedObject = item?.Word;
-            WordSubGrid.SelectedObject = item?.WordSub;
-            WordDetailGrid.SelectedObject = item?.WordDetail;
-            indexChanging = false;
 
-            if (item == null) return;
+            if (item == null)
+            {
+                ClearSimpleEditor();
+                return;
+            }
+
+            MusicInfoGrid.SelectedObject = item.MusicInfo;
+            MusicAttributesGrid.SelectedObject = item.MusicAttribute;
+            MusicOrderGrid.SelectedObject = item.MusicOrder;
+            WordsGrid.SelectedObject = item.Word;
+            WordSubGrid.SelectedObject = item.WordSub;
+            WordDetailGrid.SelectedObject = item.WordDetail;
 
             simpleBoxLoading = true;
-            SimpleIdBox.Text = item.MusicInfo.Id;
-            SimpleTitleBox.Text = item.Word.JapaneseText;
-            SimpleSubtitleBox.Text = item.WordSub.JapaneseText;
-            SimpleDetailBox.Text = item.WordDetail.JapaneseText;
-            SimpleGenreBox.SelectedItem = item.MusicOrder.Genre;
-            SimpleStarEasyBox.Value = item.MusicInfo.StarEasy;
-            SimpleStarNormalBox.Value = item.MusicInfo.StarNormal;
-            SimpleStarHardBox.Value = item.MusicInfo.StarHard;
-            SimpleStarManiaBox.Value = item.MusicInfo.StarMania;
-            SimpleStarUraBox.Value = item.MusicInfo.StarUra;
-            SimpleStarUraBox.Enabled = item.MusicAttribute.CanPlayUra;
-            simpleBoxLoading = false;
+            try
+            {
+                SimpleIdBox.Text = item.MusicInfo?.Id ?? item.Id ?? string.Empty;
+                SimpleTitleBox.Text = item.Word?.JapaneseText ?? string.Empty;
+                SimpleSubtitleBox.Text = item.WordSub?.JapaneseText ?? string.Empty;
+                SimpleDetailBox.Text = item.WordDetail?.JapaneseText ?? string.Empty;
+                SimpleGenreBox.SelectedItem = item.MusicOrder?.Genre ?? item.MusicInfo?.Genre ?? Genre.Pop;
+                SimpleStarEasyBox.Value = item.MusicInfo?.StarEasy ?? 0;
+                SimpleStarNormalBox.Value = item.MusicInfo?.StarNormal ?? 0;
+                SimpleStarHardBox.Value = item.MusicInfo?.StarHard ?? 0;
+                SimpleStarManiaBox.Value = item.MusicInfo?.StarMania ?? 0;
+                SimpleStarUraBox.Value = item.MusicInfo?.StarUra ?? 0;
+                SimpleStarUraBox.Enabled = item.MusicAttribute?.CanPlayUra == true;
+            }
+            finally
+            {
+                simpleBoxLoading = false;
+            }
+
+            LoadMultilingualWordEditor(item.Id);
+        }
+
+        private void ClearSimpleEditor()
+        {
+            MusicInfoGrid.SelectedObject = null;
+            MusicAttributesGrid.SelectedObject = null;
+            MusicOrderGrid.SelectedObject = null;
+            WordsGrid.SelectedObject = null;
+            WordSubGrid.SelectedObject = null;
+            WordDetailGrid.SelectedObject = null;
+
+            simpleBoxLoading = true;
+            try
+            {
+                SimpleIdBox.Clear();
+                SimpleTitleBox.Clear();
+                SimpleSubtitleBox.Clear();
+                SimpleDetailBox.Clear();
+                SimpleGenreBox.SelectedIndex = -1;
+                SimpleStarEasyBox.Value = 0;
+                SimpleStarNormalBox.Value = 0;
+                SimpleStarHardBox.Value = 0;
+                SimpleStarManiaBox.Value = 0;
+                SimpleStarUraBox.Value = 0;
+                SimpleStarUraBox.Enabled = false;
+            }
+            finally
+            {
+                simpleBoxLoading = false;
+            }
+
+            ClearMultilingualWordEditor();
         }
 
         private bool indexChanging = false;
@@ -108,12 +176,19 @@ namespace TaikoSoundEditor
         {
             if (indexChanging) return;
             indexChanging = true;
-            NewSoundsBox.SelectedItem = null;
-            var item = LoadedMusicBox.SelectedItem as IMusicInfo;
-            Logger.Info($"Selection Changed MusicItem: {item}");
-            LoadMusicInfo(item);
-            indexChanging = false;
-            if (SoundViewTab.SelectedTab == MusicOrderTab) SoundViewTab.SelectedTab = SoundViewerSimple;
+            try
+            {
+                NewSoundsBox.SelectedItem = null;
+                var item = LoadedMusicBox.SelectedItem as IMusicInfo;
+                Logger.Info($"Selection Changed MusicItem: {item}");
+                LoadMusicInfo(item);
+                if (SoundViewTab.SelectedTab == MusicOrderTab)
+                    SoundViewTab.SelectedTab = SoundViewerSimple;
+            }
+            finally
+            {
+                indexChanging = false;
+            }
         });
 
         private void EditorTable_Resize(object sender, EventArgs e) => ExceptionGuard.Run(() =>
@@ -125,10 +200,18 @@ namespace TaikoSoundEditor
         {
             if (indexChanging) return;
             indexChanging = true;
-            LoadedMusicBox.SelectedItem = null;
-            var item = NewSoundsBox.SelectedItem as NewSongData;
-            LoadNewSongData(item);
-            if(SoundViewTab.SelectedTab == MusicOrderTab) SoundViewTab.SelectedTab = SoundViewerSimple;
+            try
+            {
+                LoadedMusicBox.SelectedItem = null;
+                var item = NewSoundsBox.SelectedItem as NewSongData;
+                LoadNewSongData(item);
+                if (SoundViewTab.SelectedTab == MusicOrderTab)
+                    SoundViewTab.SelectedTab = SoundViewerSimple;
+            }
+            finally
+            {
+                indexChanging = false;
+            }
         });
 
         #endregion        
@@ -236,17 +319,16 @@ namespace TaikoSoundEditor
         {
             if (simpleBoxLoading) return;
 
-            if (LoadedMusicBox.SelectedItem != null)
+            if (LoadedMusicBox.SelectedItem is IMusicInfo item)
             {
-                var item = LoadedMusicBox.SelectedItem as IMusicInfo;
+                Logger.Info($"Simple Box changed : {(sender as Control)?.Name} to value {(sender as Control)?.Text}");
 
-                Logger.Info($"Simple Box changed : {(sender as Control).Name} to value {(sender as Control).Text}");
+                ApplyJapaneseWordEditFromSimpleControl(item.Id, sender);
 
-
-                WordList.GetBySong(item.Id).JapaneseText = SimpleTitleBox.Text;
-                WordList.GetBySongSub(item.Id).JapaneseText = SimpleSubtitleBox.Text;
-                WordList.GetBySongDetail(item.Id).JapaneseText = SimpleDetailBox.Text;
-                MusicOrders.GetByUniqueId(item.UniqueId).Genre = item.Genre = (Genre)(SimpleGenreBox.SelectedItem ?? Genre.Pop);
+                var order = MusicOrders?.GetByUniqueId(item.UniqueId);
+                var genre = (Genre)(SimpleGenreBox.SelectedItem ?? Genre.Pop);
+                if (order != null) order.Genre = genre;
+                item.Genre = genre;
                 item.StarEasy = (int)SimpleStarEasyBox.Value;
                 item.StarNormal = (int)SimpleStarNormalBox.Value;
                 item.StarHard = (int)SimpleStarHardBox.Value;
@@ -254,22 +336,27 @@ namespace TaikoSoundEditor
                 item.StarUra = (int)SimpleStarUraBox.Value;
                 return;
             }
-            else if (NewSoundsBox.SelectedItem != null)
+
+            if (NewSoundsBox.SelectedItem is NewSongData newSong)
             {
-                var item = NewSoundsBox.SelectedItem as NewSongData;
+                Logger.Info($"Simple Box changed : {(sender as Control)?.Name} to value {(sender as Control)?.Text}");
 
-                Logger.Info($"Simple Box changed : {(sender as Control).Name} to value {(sender as Control).Text}");
+                if (newSong.Word != null) newSong.Word.JapaneseText = SimpleTitleBox.Text;
+                if (newSong.WordSub != null) newSong.WordSub.JapaneseText = SimpleSubtitleBox.Text;
+                if (newSong.WordDetail != null) newSong.WordDetail.JapaneseText = SimpleDetailBox.Text;
+                ApplyJapaneseWordEditFromSimpleControl(newSong.Id, sender);
 
-                item.Word.JapaneseText = SimpleTitleBox.Text;
-                item.WordSub.JapaneseText = SimpleSubtitleBox.Text;
-                item.WordDetail.JapaneseText = SimpleDetailBox.Text;
-                item.MusicOrder.Genre = item.MusicInfo.Genre = (Genre)(SimpleGenreBox.SelectedItem ?? Genre.Pop);
-                item.MusicInfo.StarEasy = (int)SimpleStarEasyBox.Value;
-                item.MusicInfo.StarNormal = (int)SimpleStarNormalBox.Value;
-                item.MusicInfo.StarHard = (int)SimpleStarHardBox.Value;
-                item.MusicInfo.StarMania = (int)SimpleStarManiaBox.Value;
-                item.MusicInfo.StarUra = (int)SimpleStarUraBox.Value;
-                return;
+                var genre = (Genre)(SimpleGenreBox.SelectedItem ?? Genre.Pop);
+                if (newSong.MusicOrder != null) newSong.MusicOrder.Genre = genre;
+                if (newSong.MusicInfo != null)
+                {
+                    newSong.MusicInfo.Genre = genre;
+                    newSong.MusicInfo.StarEasy = (int)SimpleStarEasyBox.Value;
+                    newSong.MusicInfo.StarNormal = (int)SimpleStarNormalBox.Value;
+                    newSong.MusicInfo.StarHard = (int)SimpleStarHardBox.Value;
+                    newSong.MusicInfo.StarMania = (int)SimpleStarManiaBox.Value;
+                    newSong.MusicInfo.StarUra = (int)SimpleStarUraBox.Value;
+                }
             }
         });
 

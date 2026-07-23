@@ -9,9 +9,10 @@ namespace TaikoSoundEditor
     {
         private ToolStripMenuItem categoriesToolStripMenuItem;
 
-        protected override void OnShown(EventArgs e)
+        private void MainForm_RuntimeShown(object sender, EventArgs e)
         {
-            base.OnShown(e);
+            if (IsInDesignMode) return;
+
             InitializeCategoryEditorMenu();
             InitializeSongDeletionMenu();
             InitializeAdvancedMetadataMenu();

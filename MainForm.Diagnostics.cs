@@ -9,9 +9,10 @@ namespace TaikoSoundEditor
     {
         private ToolStripMenuItem diagnosticsToolStripMenuItem;
 
-        protected override void OnLoad(EventArgs e)
+        private void MainForm_RuntimeLoad(object sender, EventArgs e)
         {
-            base.OnLoad(e);
+            if (IsInDesignMode) return;
+
             InitializeProjectDiagnosticsMenu();
             RefreshProjectDiagnosticsState();
         }
