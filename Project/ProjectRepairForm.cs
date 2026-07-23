@@ -20,16 +20,16 @@ namespace TaikoSoundEditor.Project
         public ProjectRepairForm(TaikoProject project)
         {
             this.project = project ?? throw new ArgumentNullException(nameof(project));
-            Text = "Explicit project repairs";
+            Text = "Project repairs and chart metadata";
             Width = 1050;
             Height = 650;
             MinimumSize = new Size(820, 500);
             StartPosition = FormStartPosition.CenterParent;
 
             summary.Dock = DockStyle.Top;
-            summary.Height = 48;
+            summary.Height = 58;
             summary.Padding = new Padding(9, 8, 9, 0);
-            summary.Text = "Only deterministic repairs are listed. Nothing is selected or changed automatically.";
+            summary.Text = "Deterministic row repairs and fumen-derived note, renda, fuusen, Shinuchi initial, and score-total fixes are listed here. Nothing is selected or changed automatically.";
 
             actionsList.Dock = DockStyle.Fill;
             actionsList.CheckOnClick = true;
@@ -90,7 +90,7 @@ namespace TaikoSoundEditor.Project
             foreach (var action in actions) actionsList.Items.Add(action, false);
             summary.Text = actions.Count == 0
                 ? "No deterministic repairs are currently available. Diagnostics may still contain issues requiring manual decisions."
-                : $"{actions.Count} deterministic repair(s) available. Review and select each change explicitly.";
+                : $"{actions.Count} explicit repair action(s) available. Chart facts and score calculations are grouped separately for review.";
             RefreshPreview();
             RefreshButtons();
         }
@@ -107,6 +107,7 @@ namespace TaikoSoundEditor.Project
             builder.AppendLine("Select a repair to inspect its exact change.");
             builder.AppendLine();
             builder.AppendLine("Repairs remain in memory until complete validated project export.");
+            builder.AppendLine("Fumen-derived actions show the chosen branch and every field change before you apply them.");
             preview.Text = builder.ToString();
         }
 

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Windows.Forms;
 using TaikoSoundEditor.Commons.Utils;
 using TaikoSoundEditor.Project;
@@ -47,8 +48,19 @@ namespace TaikoSoundEditor
 
             // Diagnostics should describe current unsaved edits, not only the original project snapshot.
             MergeEditableDatatables();
-            using (var form = new DiagnosticsForm(CurrentProject.BuildIndex().Diagnostics))
-                form.ShowDialog(this);
+            UseWaitCursor = true;
+            try
+            {
+                var index = CurrentProject.BuildIndex();
+                var chartAudit = ProjectChartMetadataAnalyzer.Analyze(CurrentProject, index);
+                var diagnostics = index.Diagnostics.Concat(chartAudit.Diagnostics).ToList();
+                using (var form = new DiagnosticsForm(diagnostics))
+                    form.ShowDialog(this);
+            }
+            finally
+            {
+                UseWaitCursor = false;
+            }
         });
     }
 }

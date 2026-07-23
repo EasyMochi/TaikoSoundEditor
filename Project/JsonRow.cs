@@ -37,6 +37,27 @@ namespace TaikoSoundEditor.Project
                 : (int?)null;
         }
 
+        public static double? GetDouble(JsonObject row, string propertyName)
+        {
+            if (row == null || !row.TryGetPropertyValue(propertyName, out var node) || node == null)
+                return null;
+
+            if (node is JsonValue value)
+            {
+                if (value.TryGetValue<double>(out var number)) return number;
+                if (value.TryGetValue<float>(out var single)) return single;
+                if (value.TryGetValue<int>(out var integer)) return integer;
+                if (value.TryGetValue<long>(out var longInteger)) return longInteger;
+                if (value.TryGetValue<string>(out var text) &&
+                    double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out number))
+                    return number;
+            }
+
+            return double.TryParse(node.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed)
+                ? parsed
+                : (double?)null;
+        }
+
         public static bool? GetBool(JsonObject row, string propertyName)
         {
             if (row == null || !row.TryGetPropertyValue(propertyName, out var node) || node == null)

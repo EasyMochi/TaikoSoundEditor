@@ -43,8 +43,19 @@ namespace TaikoSoundEditor
             }
 
             MergeEditableDatatables();
-            using var form = new ProjectRepairForm(CurrentProject);
-            form.ShowDialog(this);
+            UseWaitCursor = true;
+            ProjectRepairForm form;
+            try
+            {
+                form = new ProjectRepairForm(CurrentProject);
+            }
+            finally
+            {
+                UseWaitCursor = false;
+            }
+
+            using (form)
+                form.ShowDialog(this);
             if (!form.RepairsApplied) return;
 
             ReloadEditableStateFromProject();

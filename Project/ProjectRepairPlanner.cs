@@ -22,6 +22,7 @@ namespace TaikoSoundEditor.Project
             }
 
             AddOrphanRowRepairs(project, index, actions);
+            actions.AddRange(ProjectChartMetadataAnalyzer.Analyze(project, index).RepairActions);
             return actions;
         }
 

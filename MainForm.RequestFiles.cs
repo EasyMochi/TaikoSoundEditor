@@ -73,6 +73,7 @@ namespace TaikoSoundEditor
 
             Config.DatatableIO.IsEncrypted = UseEncryptionBox.Checked;
             SSL.LoadKeys();
+            FumenChartStatistics.ClearCache();
 
             CurrentProject = TaikoProject.Open(DirSelector.Path, UseEncryptionBox.Checked);
             ResetMultilingualWordSchema();
