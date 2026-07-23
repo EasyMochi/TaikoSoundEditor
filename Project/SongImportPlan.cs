@@ -24,10 +24,14 @@ namespace TaikoSoundEditor.Project
         private readonly int silenceSeconds;
         private readonly float adjustedOffset;
         private readonly float adjustedDemoStart;
+        private readonly Genre? genreOverride;
+        private readonly string genreSource;
+        private readonly bool markAsNew;
 
         private SongImportPlan(TaikoProject project, IEnumerable<NewSongData> pendingSongs,
             string audioPath, string tjaPath, string songId, int uniqueId, TJA tja,
-            string[] sourceLines, int silenceSeconds)
+            string[] sourceLines, int silenceSeconds, Genre? genreOverride,
+            string genreSource, bool markAsNew)
         {
             Project = project ?? throw new ArgumentNullException(nameof(project));
             PendingSongs = (pendingSongs ?? Enumerable.Empty<NewSongData>()).ToList();
@@ -40,6 +44,9 @@ namespace TaikoSoundEditor.Project
             this.silenceSeconds = Math.Max(0, silenceSeconds);
             adjustedOffset = Tja.Headers.Offset - this.silenceSeconds;
             adjustedDemoStart = Tja.Headers.DemoStart + this.silenceSeconds;
+            this.genreOverride = genreOverride;
+            this.genreSource = genreSource ?? string.Empty;
+            this.markAsNew = markAsNew;
 
             Analyze();
         }
@@ -59,10 +66,11 @@ namespace TaikoSoundEditor.Project
 
         public static SongImportPlan Create(TaikoProject project, IEnumerable<NewSongData> pendingSongs,
             string audioPath, string tjaPath, string songId, int uniqueId, TJA tja,
-            string[] sourceLines, int silenceSeconds)
+            string[] sourceLines, int silenceSeconds, Genre? genreOverride = null,
+            string genreSource = null, bool markAsNew = true)
         {
             return new SongImportPlan(project, pendingSongs, audioPath, tjaPath, songId, uniqueId,
-                tja, sourceLines, silenceSeconds);
+                tja, sourceLines, silenceSeconds, genreOverride, genreSource, markAsNew);
         }
 
         public static int FindNextUniqueId(TaikoProject project, IEnumerable<NewSongData> pendingSongs)
@@ -184,7 +192,10 @@ namespace TaikoSoundEditor.Project
             text.AppendLine($"Title (Simplified Chinese): {titleTexts.ChineseSimplified}");
             text.AppendLine($"Subtitle (Japanese / English): {subtitleTexts.Japanese} / {subtitleTexts.English}");
             text.AppendLine($"ID / unique ID: {SongId} / {UniqueId}");
-            text.AppendLine($"Genre: {Genre} (TJA: {Tja.Headers.Genre})");
+            text.AppendLine(genreOverride.HasValue
+                ? $"Genre: {Genre} (folder: {genreSource}; TJA: {Tja.Headers.Genre})"
+                : $"Genre: {Genre} (TJA: {Tja.Headers.Genre})");
+            text.AppendLine($"NEW flag: {markAsNew}");
             text.AppendLine($"Audio: {AudioPath}");
             text.AppendLine($"TJA: {TjaPath}");
             text.AppendLine($"Added silence: {silenceSeconds} second(s)");
@@ -356,9 +367,16 @@ namespace TaikoSoundEditor.Project
             if (UniqueId <= 0 || UniqueId > ushort.MaxValue)
                 errors.Add("The unique id must fit the NUS3BANK 16-bit song-id field (1-65535).");
 
-            Genre = ParseGenre(Tja.Headers.Genre, out var knownGenre);
-            if (!knownGenre)
-                warnings.Add($"Unknown TJA genre '{Tja.Headers.Genre}'. The initial category will be Pop.");
+            if (genreOverride.HasValue)
+            {
+                Genre = genreOverride.Value;
+            }
+            else
+            {
+                Genre = ParseGenre(Tja.Headers.Genre, out var knownGenre);
+                if (!knownGenre)
+                    warnings.Add($"Unknown TJA genre '{Tja.Headers.Genre}'. The initial category will be Pop.");
+            }
 
             foreach (var difficulty in RequiredDifficulties.Where(value => !Tja.Courses.ContainsKey(value)))
             {
@@ -498,7 +516,7 @@ namespace TaikoSoundEditor.Project
 
         private IMusicAttribute CreateMusicAttribute()
         {
-            var attribute = DatatableTypes.CreateMusicAttribute(SongId, UniqueId, true);
+            var attribute = DatatableTypes.CreateMusicAttribute(SongId, UniqueId, markAsNew);
             attribute.CanPlayUra = Tja.Courses.ContainsKey(4);
             return attribute;
         }

@@ -27,6 +27,7 @@ namespace TaikoSoundEditor
         private ToolStripStatusLabel unifiedProjectStatus;
         private ToolStripStatusLabel unifiedChangesStatus;
         private Button unifiedImportButton;
+        private Button unifiedBatchImportButton;
         private Button unifiedMetadataButton;
         private Button unifiedAdvancedButton;
         private Button unifiedCategoriesButton;
@@ -252,6 +253,7 @@ namespace TaikoSoundEditor
         private Control BuildUnifiedActionRail()
         {
             unifiedImportButton = ActionButton("Import TJA song...");
+            unifiedBatchImportButton = ActionButton("Batch import ESE folder...");
             unifiedMetadataButton = ActionButton("Edit metadata");
             unifiedAdvancedButton = ActionButton("Advanced fields");
             unifiedCategoriesButton = ActionButton("Edit categories...");
@@ -262,6 +264,7 @@ namespace TaikoSoundEditor
             unifiedExportButton = ActionButton("Validated export...");
 
             unifiedImportButton.Click += (_, _) => CreateButton_Click(this, EventArgs.Empty);
+            unifiedBatchImportButton.Click += (_, _) => OpenEseBatchImporter();
             unifiedMetadataButton.Click += (_, _) => SoundViewTab.SelectedTab = SoundViewerSimple;
             unifiedAdvancedButton.Click += (_, _) => SoundViewTab.SelectedTab = SoundViewerExpert;
             unifiedCategoriesButton.Click += (_, _) => CategoriesToolStripMenuItem_Click(this, EventArgs.Empty);
@@ -271,12 +274,12 @@ namespace TaikoSoundEditor
             unifiedRepairsButton.Click += (_, _) => RepairsToolStripMenuItem_Click(this, EventArgs.Empty);
             unifiedExportButton.Click += (_, _) => ExportAllButton_Click(this, EventArgs.Empty);
 
-            var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 11, Padding = new Padding(6) };
+            var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 12, Padding = new Padding(6) };
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-            for (var i = 0; i < 9; i++) panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 43));
+            for (var i = 0; i < 10; i++) panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 43));
             panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             panel.Controls.Add(Heading("Actions"), 0, 0);
-            var buttons = new[] { unifiedImportButton, unifiedMetadataButton, unifiedAdvancedButton, unifiedCategoriesButton, unifiedAiUsbButton, unifiedDeleteButton, unifiedDiagnosticsButton, unifiedRepairsButton, unifiedExportButton };
+            var buttons = new[] { unifiedImportButton, unifiedBatchImportButton, unifiedMetadataButton, unifiedAdvancedButton, unifiedCategoriesButton, unifiedAiUsbButton, unifiedDeleteButton, unifiedDiagnosticsButton, unifiedRepairsButton, unifiedExportButton };
             for (var i = 0; i < buttons.Length; i++) panel.Controls.Add(buttons[i], 0, i + 1);
             return panel;
         }
@@ -296,6 +299,8 @@ namespace TaikoSoundEditor
 
             var song = new ToolStripMenuItem("&Song");
             song.DropDownItems.Add(MenuItem("Import TJA song...", () => CreateButton_Click(this, EventArgs.Empty)));
+            song.DropDownItems.Add(MenuItem("Batch import ESE folder...", OpenEseBatchImporter));
+            song.DropDownItems.Add(new ToolStripSeparator());
             song.DropDownItems.Add(MenuItem("Edit metadata", () => SoundViewTab.SelectedTab = SoundViewerSimple));
             song.DropDownItems.Add(MenuItem("Advanced fields", () => SoundViewTab.SelectedTab = SoundViewerExpert));
             song.DropDownItems.Add(MenuItem("Categories...", () => CategoriesToolStripMenuItem_Click(this, EventArgs.Empty)));
