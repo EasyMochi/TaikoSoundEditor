@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -48,7 +48,7 @@ namespace TaikoSoundEditor.Commons.Emit
             constructorIl.Emit(OpCodes.Call, typeof(object).GetConstructor(Type.EmptyTypes));
 
             var generatedProperties = new Dictionary<string, GeneratedProperty>(StringComparer.Ordinal);
-            foreach (var property in properties)
+            foreach (var property in NormalizeProperties(name, properties))
                 generatedProperties.Add(property.Name, GenerateProperty(typeBuilder, constructorIl, property));
 
             constructorIl.Emit(OpCodes.Ret);
@@ -68,6 +68,44 @@ namespace TaikoSoundEditor.Commons.Emit
 
             return typeBuilder.CreateType();
         }
+
+        private static IEnumerable<EntityPropertyInfo> NormalizeProperties(
+            string typeName,
+            IEnumerable<EntityPropertyInfo> properties)
+        {
+            if (properties == null)
+                throw new InvalidOperationException($"Dynamic type `{typeName}` has no property collection.");
+
+            var uniqueProperties = new Dictionary<string, EntityPropertyInfo>(StringComparer.Ordinal);
+            foreach (var property in properties)
+            {
+                if (property == null)
+                    throw new InvalidOperationException($"Dynamic type `{typeName}` contains a null property definition.");
+                if (string.IsNullOrWhiteSpace(property.Name))
+                    throw new InvalidOperationException($"Dynamic type `{typeName}` contains a property without a name.");
+
+                if (!uniqueProperties.TryGetValue(property.Name, out var existing))
+                {
+                    uniqueProperties.Add(property.Name, property);
+                    continue;
+                }
+
+                if (!AreEquivalent(existing, property))
+                    throw new InvalidOperationException(
+                        $"Dynamic type `{typeName}` defines property `{property.Name}` more than once with conflicting definitions.");
+
+                Debug.WriteLine(
+                    $"Ignoring identical duplicate property `{property.Name}` in dynamic type `{typeName}`.");
+            }
+
+            return uniqueProperties.Values;
+        }
+
+        private static bool AreEquivalent(EntityPropertyInfo left, EntityPropertyInfo right)
+            => left.Type == right.Type &&
+               string.Equals(left.JsonPropertyName, right.JsonPropertyName, StringComparison.Ordinal) &&
+               left.IsReadOnly == right.IsReadOnly &&
+               Equals(left.DefaultValue, right.DefaultValue);
 
         private static GeneratedProperty GenerateProperty(
             TypeBuilder typeBuilder,

@@ -106,7 +106,6 @@
 		{ "name": "RendaTimeHard", "type": "Double", "defaultValue": "0"},		
 		{ "name": "RendaTimeMania", "type": "Double", "defaultValue": "0"},		
 		{ "name": "RendaTimeUra", "type": "Double", "defaultValue": "0"},		
-		{ "name": "RendaTimeUra", "type": "Double", "defaultValue": "0"},		
 		{ "name": "FuusenTotalEasy", "type": "Int32", "defaultValue": "0"},				
 		{ "name": "FuusenTotalNormal", "type": "Int32", "defaultValue": "0"},				
 		{ "name": "FuusenTotalHard", "type": "Int32", "defaultValue": "0"},				
