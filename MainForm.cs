@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -27,7 +28,9 @@ namespace TaikoSoundEditor
             TabControl.SelectedIndexChanged += TabControl_SelectedIndexChanged;
 
             SimpleGenreBox.DataSource = Enum.GetValues(typeof(Genre));
-            LoadPreferences();
+
+            if (LicenseManager.UsageMode != LicenseUsageMode.Designtime)
+                LoadPreferences();
         }
 
         private void TabControl_SelectedIndexChanged(object sender, EventArgs e) =>

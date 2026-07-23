@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Windows.Forms;
 using TaikoSoundEditor.Commons.Utils;
 using TaikoSoundEditor.Project;
@@ -12,6 +13,7 @@ namespace TaikoSoundEditor
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
             InitializeCategoryEditorMenu();
             InitializeSongDeletionMenu();
             InitializeAdvancedMetadataMenu();

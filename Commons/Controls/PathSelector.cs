@@ -15,11 +15,23 @@ namespace TaikoSoundEditor.Commons.Controls
         protected override void SetBoundsCore(
             int x, int y, int width, int height, BoundsSpecified specified)
         {
-            if ((specified & BoundsSpecified.Height) == 0 || height == DisplayBox.Height)
-            {
-                base.SetBoundsCore(x, y, width, DisplayBox.Height, specified);
-                Button.Width = 2 * DisplayBox.Height;
-            }
+            // A docked control must always accept a bounds update. The previous
+            // implementation ignored height changes, which caused WinForms layout
+            // to retry forever when this control used DockStyle.Fill.
+            var preferredHeight = DisplayBox?.PreferredHeight ?? height;
+            var mayGrowVertically = Dock == DockStyle.Fill
+                || Dock == DockStyle.Left
+                || Dock == DockStyle.Right;
+
+            base.SetBoundsCore(
+                x,
+                y,
+                width,
+                mayGrowVertically ? height : preferredHeight,
+                specified);
+
+            if (Button != null)
+                Button.Width = 2 * preferredHeight;
         }
 
         [DefaultValue(false)]

@@ -20,120 +20,239 @@ namespace TaikoSoundEditor
             components = new System.ComponentModel.Container();
 
             TabControl = new TabControl();
+            TabControl.Name = "TabControl";
             tabPage1 = new TabPage();
+            tabPage1.Name = "tabPage1";
             tabPage2 = new TabPage();
+            tabPage2.Name = "tabPage2";
             tabPage3 = new TabPage();
+            tabPage3.Name = "tabPage3";
 
             panel1 = new Panel();
+            panel1.Name = "panel1";
             groupBox1 = new GroupBox();
+            groupBox1.Name = "groupBox1";
             groupBox2 = new GroupBox();
+            groupBox2.Name = "groupBox2";
             groupBox12 = new GroupBox();
+            groupBox12.Name = "groupBox12";
             groupBox13 = new GroupBox();
+            groupBox13.Name = "groupBox13";
             label1 = new Label();
+            label1.Name = "label1";
             label5 = new Label();
+            label5.Name = "label5";
             label6 = new Label();
+            label6.Name = "label6";
             label7 = new Label();
+            label7.Name = "label7";
             label8 = new Label();
+            label8.Name = "label8";
             label20 = new Label();
+            label20.Name = "label20";
             label21 = new Label();
+            label21.Name = "label21";
             label22 = new Label();
+            label22.Name = "label22";
             DirSelector = new PathSelector();
+            DirSelector.Name = "DirSelector";
             MusicAttributePathSelector = new PathSelector();
+            MusicAttributePathSelector.Name = "MusicAttributePathSelector";
             MusicOrderPathSelector = new PathSelector();
+            MusicOrderPathSelector.Name = "MusicOrderPathSelector";
             MusicInfoPathSelector = new PathSelector();
+            MusicInfoPathSelector.Name = "MusicInfoPathSelector";
             WordListPathSelector = new PathSelector();
+            WordListPathSelector.Name = "WordListPathSelector";
             DatatableDef = new PathSelector();
+            DatatableDef.Name = "DatatableDef";
             DatatableKeyBox = new TextBox();
+            DatatableKeyBox.Name = "DatatableKeyBox";
             FumenKeyBox = new TextBox();
+            FumenKeyBox.Name = "FumenKeyBox";
             UseEncryptionBox = new CheckBox();
+            UseEncryptionBox.Name = "UseEncryptionBox";
             OkButton = new Button();
+            OkButton.Name = "OkButton";
 
             menuStrip1 = new MenuStrip();
+            menuStrip1.Name = "menuStrip1";
             preferencesToolStripMenuItem1 = new ToolStripMenuItem();
+            preferencesToolStripMenuItem1.Name = "preferencesToolStripMenuItem1";
             musicOrderToolStripMenuItem = new ToolStripMenuItem();
+            musicOrderToolStripMenuItem.Name = "musicOrderToolStripMenuItem";
             sortByTitleToolStripMenuItem = new ToolStripMenuItem();
+            sortByTitleToolStripMenuItem.Name = "sortByTitleToolStripMenuItem";
             SortByGenreToolStripMenuItem = new ToolStripMenuItem();
+            SortByGenreToolStripMenuItem.Name = "SortByGenreToolStripMenuItem";
             SortByIdToolStripMenuItem = new ToolStripMenuItem();
+            SortByIdToolStripMenuItem.Name = "SortByIdToolStripMenuItem";
             noSortToolStripMenuItem = new ToolStripMenuItem();
+            noSortToolStripMenuItem.Name = "noSortToolStripMenuItem";
             checkForUpdatesToolStripMenuItem = new ToolStripMenuItem();
+            checkForUpdatesToolStripMenuItem.Name = "checkForUpdatesToolStripMenuItem";
 
             SoundViewTab = new TabControl();
+            SoundViewTab.Name = "SoundViewTab";
             SoundViewerSimple = new TabPage();
+            SoundViewerSimple.Name = "SoundViewerSimple";
             SoundViewerExpert = new TabPage();
+            SoundViewerExpert.Name = "SoundViewerExpert";
             MusicOrderTab = new TabPage();
+            MusicOrderTab.Name = "MusicOrderTab";
             LocateInMusicOrderButton = new Button();
+            LocateInMusicOrderButton.Name = "LocateInMusicOrderButton";
             groupBox11 = new GroupBox();
+            groupBox11.Name = "groupBox11";
             label19 = new Label();
+            label19.Name = "label19";
             label17 = new Label();
+            label17.Name = "label17";
             label18 = new Label();
+            label18.Name = "label18";
             label16 = new Label();
+            label16.Name = "label16";
             label15 = new Label();
+            label15.Name = "label15";
             label14 = new Label();
+            label14.Name = "label14";
             label13 = new Label();
+            label13.Name = "label13";
             label12 = new Label();
+            label12.Name = "label12";
             label11 = new Label();
+            label11.Name = "label11";
             label4 = new Label();
+            label4.Name = "label4";
             SimpleStarUraBox = new NumericUpDown();
+            SimpleStarUraBox.Name = "SimpleStarUraBox";
             SimpleStarManiaBox = new NumericUpDown();
+            SimpleStarManiaBox.Name = "SimpleStarManiaBox";
             SimpleStarHardBox = new NumericUpDown();
+            SimpleStarHardBox.Name = "SimpleStarHardBox";
             SimpleStarNormalBox = new NumericUpDown();
+            SimpleStarNormalBox.Name = "SimpleStarNormalBox";
             SimpleStarEasyBox = new NumericUpDown();
+            SimpleStarEasyBox.Name = "SimpleStarEasyBox";
             SimpleIdBox = new TextBox();
+            SimpleIdBox.Name = "SimpleIdBox";
             SimpleGenreBox = new ComboBox();
+            SimpleGenreBox.Name = "SimpleGenreBox";
             SimpleDetailBox = new TextBox();
+            SimpleDetailBox.Name = "SimpleDetailBox";
             SimpleSubtitleBox = new TextBox();
+            SimpleSubtitleBox.Name = "SimpleSubtitleBox";
             SimpleTitleBox = new TextBox();
+            SimpleTitleBox.Name = "SimpleTitleBox";
 
             groupBox4 = new GroupBox();
+            groupBox4.Name = "groupBox4";
             EditorTable = new TableLayoutPanel();
+            EditorTable.Name = "EditorTable";
             panel3 = new Panel();
+            panel3.Name = "panel3";
             groupBox6 = new GroupBox();
+            groupBox6.Name = "groupBox6";
             groupBox7 = new GroupBox();
+            groupBox7.Name = "groupBox7";
             groupBox5 = new GroupBox();
+            groupBox5.Name = "groupBox5";
             panel2 = new Panel();
+            panel2.Name = "panel2";
             WordDetailGB = new GroupBox();
+            WordDetailGB.Name = "WordDetailGB";
             WordSubGB = new GroupBox();
+            WordSubGB.Name = "WordSubGB";
             WordsGB = new GroupBox();
+            WordsGB.Name = "WordsGB";
             MusicInfoGrid = new PropertyGrid();
+            MusicInfoGrid.Name = "MusicInfoGrid";
             MusicAttributesGrid = new PropertyGrid();
+            MusicAttributesGrid.Name = "MusicAttributesGrid";
             MusicOrderGrid = new PropertyGrid();
+            MusicOrderGrid.Name = "MusicOrderGrid";
             WordsGrid = new PropertyGrid();
+            WordsGrid.Name = "WordsGrid";
             WordSubGrid = new PropertyGrid();
+            WordSubGrid.Name = "WordSubGrid";
             WordDetailGrid = new PropertyGrid();
+            WordDetailGrid.Name = "WordDetailGrid";
             MusicOrderViewer = new MusicOrderViewer();
+            MusicOrderViewer.Name = "MusicOrderViewer";
 
             groupBox8 = new GroupBox();
+            groupBox8.Name = "groupBox8";
             groupBox3 = new GroupBox();
+            groupBox3.Name = "groupBox3";
             LoadedMusicBox = new ListBox();
+            LoadedMusicBox.Name = "LoadedMusicBox";
             NewSoundsBox = new ListBox();
+            NewSoundsBox.Name = "NewSoundsBox";
             SearchBox = new TextBox();
+            SearchBox.Name = "SearchBox";
             CreateButton = new Button();
+            CreateButton.Name = "CreateButton";
             RemoveSongButton = new Button();
+            RemoveSongButton.Name = "RemoveSongButton";
             ExportDatatableButton = new Button();
+            ExportDatatableButton.Name = "ExportDatatableButton";
             ExportSoundFoldersButton = new Button();
+            ExportSoundFoldersButton.Name = "ExportSoundFoldersButton";
             ExportSoundBanksButton = new Button();
+            ExportSoundBanksButton.Name = "ExportSoundBanksButton";
             ExportAllButton = new Button();
+            ExportAllButton.Name = "ExportAllButton";
             ExportOpenOnFinished = new CheckBox();
+            ExportOpenOnFinished.Name = "ExportOpenOnFinished";
             DatatableSpaces = new CheckBox();
+            DatatableSpaces.Name = "DatatableSpaces";
 
             panel4 = new Panel();
+            panel4.Name = "panel4";
             groupBox10 = new GroupBox();
+            groupBox10.Name = "groupBox10";
             groupBox9 = new GroupBox();
+            groupBox9.Name = "groupBox9";
             label2 = new Label();
+            label2.Name = "label2";
             label3 = new Label();
+            label3.Name = "label3";
             label9 = new Label();
+            label9.Name = "label9";
             label10 = new Label();
+            label10.Name = "label10";
             TJASelector = new PathSelector();
+            TJASelector.Name = "TJASelector";
             AudioFileSelector = new PathSelector();
+            AudioFileSelector.Name = "AudioFileSelector";
             SongNameBox = new TextBox();
+            SongNameBox.Name = "SongNameBox";
             CreateOkButton = new Button();
+            CreateOkButton.Name = "CreateOkButton";
             CreateBackButton = new Button();
+            CreateBackButton.Name = "CreateBackButton";
             FeedbackBox = new TextBox();
+            FeedbackBox.Name = "FeedbackBox";
             AddSilenceBox = new CheckBox();
+            AddSilenceBox.Name = "AddSilenceBox";
             TjaEncShiftJIS = new RadioButton();
+            TjaEncShiftJIS.Name = "TjaEncShiftJIS";
             TjaEncUTF8 = new RadioButton();
+            TjaEncUTF8.Name = "TjaEncUTF8";
             TjaEncAuto = new RadioButton();
+            TjaEncAuto.Name = "TjaEncAuto";
             SilenceBox = new NumericUpDown();
+            SilenceBox.Name = "SilenceBox";
+            simpleTable = new TableLayoutPanel();
+            simpleTable.Name = "simpleTable";
+            stars = new FlowLayoutPanel();
+            stars.Name = "stars";
+            editorRoot = new TableLayoutPanel();
+            editorRoot.Name = "editorRoot";
+            importTable = new TableLayoutPanel();
+            importTable.Name = "importTable";
+            importButtons = new FlowLayoutPanel();
+            importButtons.Name = "importButtons";
 
             SuspendLayout();
 
@@ -233,24 +352,35 @@ namespace TaikoSoundEditor
             SoundViewerExpert.Text = "Advanced fields";
             MusicOrderTab.Text = "Categories and order";
 
-            var simpleTable = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 7,
-                Padding = new Padding(8)
-            };
+            simpleTable.Dock = DockStyle.Fill;
+            simpleTable.ColumnCount = 2;
+            simpleTable.RowCount = 7;
+            simpleTable.Padding = new Padding(8);
             simpleTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90));
             simpleTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (var i = 0; i < 7; i++) simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+            simpleTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
 
             label14.Text = "ID";
             label4.Text = "Title";
             label11.Text = "Subtitle";
             label12.Text = "Detail";
             label13.Text = "Genre";
-            label14.Dock = label4.Dock = label11.Dock = label12.Dock = label13.Dock = DockStyle.Fill;
-            SimpleIdBox.Dock = SimpleTitleBox.Dock = SimpleSubtitleBox.Dock = SimpleDetailBox.Dock = SimpleGenreBox.Dock = DockStyle.Fill;
+            label14.Dock = DockStyle.Fill;
+            label4.Dock = DockStyle.Fill;
+            label11.Dock = DockStyle.Fill;
+            label12.Dock = DockStyle.Fill;
+            label13.Dock = DockStyle.Fill;
+            SimpleIdBox.Dock = DockStyle.Fill;
+            SimpleTitleBox.Dock = DockStyle.Fill;
+            SimpleSubtitleBox.Dock = DockStyle.Fill;
+            SimpleDetailBox.Dock = DockStyle.Fill;
+            SimpleGenreBox.Dock = DockStyle.Fill;
             SimpleIdBox.ReadOnly = true;
             SimpleTitleBox.TextChanged += SimpleBoxChanged;
             SimpleSubtitleBox.TextChanged += SimpleBoxChanged;
@@ -270,19 +400,33 @@ namespace TaikoSoundEditor
 
             groupBox11.Text = "Stars";
             groupBox11.Dock = DockStyle.Fill;
-            var stars = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.LeftToRight };
+            stars.Dock = DockStyle.Fill;
+            stars.FlowDirection = FlowDirection.LeftToRight;
             label15.Text = "Easy";
             label16.Text = "Normal";
             label18.Text = "Hard";
             label17.Text = "Oni";
             label19.Text = "Ura";
-            foreach (var box in new[] { SimpleStarEasyBox, SimpleStarNormalBox, SimpleStarHardBox, SimpleStarManiaBox, SimpleStarUraBox })
-            {
-                box.Minimum = 0;
-                box.Maximum = 10;
-                box.Width = 48;
-                box.ValueChanged += SimpleBoxChanged;
-            }
+            SimpleStarEasyBox.Minimum = 0;
+            SimpleStarEasyBox.Maximum = 10;
+            SimpleStarEasyBox.Width = 48;
+            SimpleStarEasyBox.ValueChanged += SimpleBoxChanged;
+            SimpleStarNormalBox.Minimum = 0;
+            SimpleStarNormalBox.Maximum = 10;
+            SimpleStarNormalBox.Width = 48;
+            SimpleStarNormalBox.ValueChanged += SimpleBoxChanged;
+            SimpleStarHardBox.Minimum = 0;
+            SimpleStarHardBox.Maximum = 10;
+            SimpleStarHardBox.Width = 48;
+            SimpleStarHardBox.ValueChanged += SimpleBoxChanged;
+            SimpleStarManiaBox.Minimum = 0;
+            SimpleStarManiaBox.Maximum = 10;
+            SimpleStarManiaBox.Width = 48;
+            SimpleStarManiaBox.ValueChanged += SimpleBoxChanged;
+            SimpleStarUraBox.Minimum = 0;
+            SimpleStarUraBox.Maximum = 10;
+            SimpleStarUraBox.Width = 48;
+            SimpleStarUraBox.ValueChanged += SimpleBoxChanged;
             stars.Controls.AddRange(new Control[]
             {
                 label15, SimpleStarEasyBox,
@@ -318,12 +462,24 @@ namespace TaikoSoundEditor
             WordsGB.Text = "Title word";
             WordSubGB.Text = "Subtitle word";
             WordDetailGB.Text = "Detail word";
-            foreach (var grid in new[] { MusicInfoGrid, MusicAttributesGrid, MusicOrderGrid, WordsGrid, WordSubGrid, WordDetailGrid })
-            {
-                grid.Dock = DockStyle.Fill;
-                grid.HelpVisible = false;
-                grid.ToolbarVisible = false;
-            }
+            MusicInfoGrid.Dock = DockStyle.Fill;
+            MusicInfoGrid.HelpVisible = false;
+            MusicInfoGrid.ToolbarVisible = false;
+            MusicAttributesGrid.Dock = DockStyle.Fill;
+            MusicAttributesGrid.HelpVisible = false;
+            MusicAttributesGrid.ToolbarVisible = false;
+            MusicOrderGrid.Dock = DockStyle.Fill;
+            MusicOrderGrid.HelpVisible = false;
+            MusicOrderGrid.ToolbarVisible = false;
+            WordsGrid.Dock = DockStyle.Fill;
+            WordsGrid.HelpVisible = false;
+            WordsGrid.ToolbarVisible = false;
+            WordSubGrid.Dock = DockStyle.Fill;
+            WordSubGrid.HelpVisible = false;
+            WordSubGrid.ToolbarVisible = false;
+            WordDetailGrid.Dock = DockStyle.Fill;
+            WordDetailGrid.HelpVisible = false;
+            WordDetailGrid.ToolbarVisible = false;
             groupBox5.Dock = DockStyle.Fill;
             groupBox6.Dock = DockStyle.Fill;
             groupBox7.Dock = DockStyle.Bottom;
@@ -331,7 +487,8 @@ namespace TaikoSoundEditor
             WordsGB.Dock = DockStyle.Top;
             WordSubGB.Dock = DockStyle.Top;
             WordDetailGB.Dock = DockStyle.Fill;
-            WordsGB.Height = WordSubGB.Height = 120;
+            WordsGB.Height = 120;
+            WordSubGB.Height = 120;
             groupBox5.Controls.Add(MusicInfoGrid);
             groupBox6.Controls.Add(MusicAttributesGrid);
             groupBox7.Controls.Add(MusicOrderGrid);
@@ -356,12 +513,9 @@ namespace TaikoSoundEditor
             MusicOrderViewer.SongDoubleClick += MusicOrderViewer_SongDoubleClick;
             MusicOrderTab.Controls.Add(MusicOrderViewer);
 
-            var editorRoot = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 2
-            };
+            editorRoot.Dock = DockStyle.Fill;
+            editorRoot.ColumnCount = 1;
+            editorRoot.RowCount = 2;
             editorRoot.RowStyles.Add(new RowStyle(SizeType.AutoSize));
             editorRoot.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             editorRoot.Controls.Add(menuStrip1, 0, 0);
@@ -420,16 +574,18 @@ namespace TaikoSoundEditor
             FeedbackBox.Multiline = true;
             FeedbackBox.ScrollBars = ScrollBars.Vertical;
 
-            var importTable = new TableLayoutPanel
-            {
-                Dock = DockStyle.Fill,
-                ColumnCount = 2,
-                RowCount = 8,
-                Padding = new Padding(12)
-            };
+            importTable.Dock = DockStyle.Fill;
+            importTable.ColumnCount = 2;
+            importTable.RowCount = 8;
+            importTable.Padding = new Padding(12);
             importTable.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120));
             importTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-            for (var i = 0; i < 6; i++) importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+            importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
             importTable.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             importTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 44));
             importTable.Controls.Add(label10, 0, 0);
@@ -444,7 +600,8 @@ namespace TaikoSoundEditor
             importTable.Controls.Add(SilenceBox, 1, 4);
             importTable.Controls.Add(FeedbackBox, 0, 6);
             importTable.SetColumnSpan(FeedbackBox, 2);
-            var importButtons = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
+            importButtons.Dock = DockStyle.Fill;
+            importButtons.FlowDirection = FlowDirection.RightToLeft;
             importButtons.Controls.Add(CreateOkButton);
             importButtons.Controls.Add(CreateBackButton);
             importTable.Controls.Add(importButtons, 0, 7);
@@ -573,5 +730,10 @@ namespace TaikoSoundEditor
         private PathSelector DatatableDef;
         private ToolStripMenuItem sortByTitleToolStripMenuItem;
         private ToolStripMenuItem noSortToolStripMenuItem;
+        private TableLayoutPanel simpleTable;
+        private FlowLayoutPanel stars;
+        private TableLayoutPanel editorRoot;
+        private TableLayoutPanel importTable;
+        private FlowLayoutPanel importButtons;
     }
 }
