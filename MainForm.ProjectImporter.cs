@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Windows.Forms;
 using TaikoSoundEditor.Commons.IO;
 using TaikoSoundEditor.Commons.Utils;
@@ -88,6 +89,9 @@ namespace TaikoSoundEditor
             WordList.Items.Add(song.Word);
             WordList.Items.Add(song.WordSub);
             WordList.Items.Add(song.WordDetail);
+            StageImportedWordRow(song.WordRow);
+            StageImportedWordRow(song.WordSubRow);
+            StageImportedWordRow(song.WordDetailRow);
             MusicAttributes.Items.Add(song.MusicAttribute);
             MusicOrderViewer.AddSong(song.MusicOrder);
             MusicOrderViewer.SortSongs();
@@ -103,6 +107,38 @@ namespace TaikoSoundEditor
             RefreshSongDeletionState();
             RefreshAdvancedMetadataState();
             NotifyUnifiedProjectStateChanged();
+        }
+
+        private void StageImportedWordRow(JsonObject row)
+        {
+            if (CurrentProject == null || row == null) return;
+            var key = JsonRow.GetString(row, "key");
+            if (string.IsNullOrWhiteSpace(key)) return;
+
+            var existing = CurrentProject.WordList.Items.OfType<JsonObject>()
+                .FirstOrDefault(item => string.Equals(JsonRow.GetString(item, "key"), key,
+                    StringComparison.Ordinal));
+            if (existing != null)
+                throw new InvalidOperationException($"A wordlist row named '{key}' already exists.");
+
+            CurrentProject.WordList.Items.Add(row);
+        }
+
+        private void RemoveImportedWordRows(string songId)
+        {
+            if (CurrentProject == null || string.IsNullOrWhiteSpace(songId)) return;
+            var keys = new[]
+            {
+                "song_" + songId,
+                "song_sub_" + songId,
+                "song_detail_" + songId
+            };
+
+            foreach (var row in CurrentProject.WordList.Items.OfType<JsonObject>()
+                         .Where(item => keys.Contains(JsonRow.GetString(item, "key"),
+                             StringComparer.Ordinal))
+                         .ToList())
+                CurrentProject.WordList.Items.Remove(row);
         }
 
         private static string[] ReadTjaLinesUsingDetectedEncoding(string path)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.Json.Nodes;
 using TaikoSoundEditor.Commons.IO;
@@ -115,6 +116,11 @@ namespace TaikoSoundEditor.Project
                 var musicInfo = CreateMusicInfo();
                 var musicAttribute = CreateMusicAttribute();
                 var musicOrder = DatatableTypes.CreateMusicOrder(Genre, SongId, UniqueId);
+
+                var titleWord = CreateLocalizedWord("song_" + SongId, BuildTitleTexts(Tja.Headers));
+                var subtitleWord = CreateLocalizedWord("song_sub_" + SongId, BuildSubtitleTexts(Tja.Headers));
+                var detailWord = CreateLocalizedWord("song_detail_" + SongId, BuildDetailTexts());
+
                 var data = new NewSongData
                 {
                     Id = SongId,
@@ -138,9 +144,12 @@ namespace TaikoSoundEditor.Project
                     MusicInfo = musicInfo,
                     MusicAttribute = musicAttribute,
                     MusicOrder = musicOrder,
-                    Word = DatatableTypes.CreateWord("song_" + SongId, Tja.Headers.Title ?? string.Empty),
-                    WordSub = DatatableTypes.CreateWord("song_sub_" + SongId, Tja.Headers.Subtitle ?? string.Empty),
-                    WordDetail = DatatableTypes.CreateWord("song_detail_" + SongId, Tja.Headers.TitleJa ?? string.Empty),
+                    Word = titleWord.Typed,
+                    WordSub = subtitleWord.Typed,
+                    WordDetail = detailWord.Typed,
+                    WordRow = titleWord.Raw,
+                    WordSubRow = subtitleWord.Raw,
+                    WordDetailRow = detailWord.Raw,
                     MusicAiSection = SongAdvancedMetadata.CreateAiRow(SongId, UniqueId, Tja, musicInfo),
                     MusicUsbSetting = SongAdvancedMetadata.CreateUsbRow(SongId, UniqueId)
                 };
@@ -166,8 +175,14 @@ namespace TaikoSoundEditor.Project
             var text = new StringBuilder();
             text.AppendLine("PROJECT-AWARE TJA IMPORT");
             text.AppendLine();
-            text.AppendLine($"Song: {Tja.Headers.Title}");
-            text.AppendLine($"Subtitle: {Tja.Headers.Subtitle}");
+            var titleTexts = BuildTitleTexts(Tja.Headers);
+            var subtitleTexts = BuildSubtitleTexts(Tja.Headers);
+            text.AppendLine($"Title (Japanese): {titleTexts.Japanese}");
+            text.AppendLine($"Title (English): {titleTexts.English}");
+            text.AppendLine($"Title (Traditional Chinese): {titleTexts.ChineseTraditional}");
+            text.AppendLine($"Title (Korean): {titleTexts.Korean}");
+            text.AppendLine($"Title (Simplified Chinese): {titleTexts.ChineseSimplified}");
+            text.AppendLine($"Subtitle (Japanese / English): {subtitleTexts.Japanese} / {subtitleTexts.English}");
             text.AppendLine($"ID / unique ID: {SongId} / {UniqueId}");
             text.AppendLine($"Genre: {Genre} (TJA: {Tja.Headers.Genre})");
             text.AppendLine($"Audio: {AudioPath}");
@@ -228,6 +243,106 @@ namespace TaikoSoundEditor.Project
             }
 
             return text.ToString();
+        }
+
+        private sealed class LocalizedTextSet
+        {
+            public string Japanese { get; init; } = string.Empty;
+            public string English { get; init; } = string.Empty;
+            public string ChineseTraditional { get; init; } = string.Empty;
+            public string Korean { get; init; } = string.Empty;
+            public string ChineseSimplified { get; init; } = string.Empty;
+        }
+
+        private sealed class LocalizedWord
+        {
+            public IWord Typed { get; init; }
+            public JsonObject Raw { get; init; }
+        }
+
+        private static LocalizedTextSet BuildTitleTexts(TJA.Header headers)
+        {
+            var english = FirstNonEmpty(headers.TitleEn, headers.Title, headers.TitleJa);
+            var japanese = FirstNonEmpty(headers.TitleJa, headers.Title, english);
+
+            return new LocalizedTextSet
+            {
+                Japanese = japanese,
+                English = english,
+                ChineseTraditional = FirstNonEmpty(headers.TitleChineseTraditional, english),
+                Korean = FirstNonEmpty(headers.TitleKo, english),
+                ChineseSimplified = FirstNonEmpty(headers.TitleChineseSimplified, english)
+            };
+        }
+
+        private static LocalizedTextSet BuildSubtitleTexts(TJA.Header headers)
+        {
+            var english = FirstNonEmpty(headers.SubtitleEn, headers.Subtitle, headers.SubtitleJa);
+            var japanese = FirstNonEmpty(headers.SubtitleJa, headers.Subtitle, english);
+
+            return new LocalizedTextSet
+            {
+                Japanese = japanese,
+                English = english,
+                ChineseTraditional = FirstNonEmpty(headers.SubtitleChineseTraditional, english),
+                Korean = FirstNonEmpty(headers.SubtitleKo, english),
+                ChineseSimplified = FirstNonEmpty(headers.SubtitleChineseSimplified, english)
+            };
+        }
+
+        private static LocalizedTextSet BuildDetailTexts()
+        {
+            // TITLEJA belongs in the Japanese title field, not in song_detail. Keep the
+            // detail row available for later editing without inventing duplicate text.
+            return new LocalizedTextSet();
+        }
+
+        private static string FirstNonEmpty(params string[] values) =>
+            values?.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
+
+        private static LocalizedWord CreateLocalizedWord(string key, LocalizedTextSet texts)
+        {
+            texts ??= new LocalizedTextSet();
+            var typed = DatatableTypes.CreateWord(key, texts.Japanese);
+            var raw = new JsonObject
+            {
+                ["key"] = key,
+                ["japaneseText"] = texts.Japanese,
+                ["japaneseFontType"] = 0,
+                ["englishUsText"] = texts.English,
+                ["englishUsFontType"] = 1,
+                ["chineseTText"] = texts.ChineseTraditional,
+                ["chineseTFontType"] = 2,
+                ["koreanText"] = texts.Korean,
+                ["koreanFontType"] = 3,
+                ["chineseSText"] = texts.ChineseSimplified,
+                ["chineseSFontType"] = 4
+            };
+
+            // Some datatable definitions expose every language as typed properties while
+            // older definitions expose Japanese only. Populate whatever exists, then keep
+            // the raw row as the lossless source for the remaining fields.
+            SetTypedWordProperty(typed, "JapaneseText", texts.Japanese);
+            SetTypedWordProperty(typed, "JapaneseFontType", 0);
+            SetTypedWordProperty(typed, "EnglishUsText", texts.English);
+            SetTypedWordProperty(typed, "EnglishUsFontType", 1);
+            SetTypedWordProperty(typed, "ChineseTText", texts.ChineseTraditional);
+            SetTypedWordProperty(typed, "ChineseTFontType", 2);
+            SetTypedWordProperty(typed, "KoreanText", texts.Korean);
+            SetTypedWordProperty(typed, "KoreanFontType", 3);
+            SetTypedWordProperty(typed, "ChineseSText", texts.ChineseSimplified);
+            SetTypedWordProperty(typed, "ChineseSFontType", 4);
+
+            return new LocalizedWord { Typed = typed, Raw = raw };
+        }
+
+        private static void SetTypedWordProperty(object target, string propertyName, object value)
+        {
+            if (target == null) return;
+            var property = target.GetType().GetProperty(propertyName,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.IgnoreCase);
+            if (property == null || !property.CanWrite) return;
+            property.SetValue(target, value);
         }
 
         private void Analyze()

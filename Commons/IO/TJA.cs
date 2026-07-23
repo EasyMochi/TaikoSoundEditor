@@ -36,7 +36,13 @@ namespace TaikoSoundEditor.Commons.IO
 
         static readonly string[] HEADER_GLOBAL = new string[] 
         {
-            "TITLE", "TITLEJA", "SUBTITLE", "BPM", "WAVE", "OFFSET", "DEMOSTART","GENRE",
+            "TITLE", "TITLEEN", "TITLEUS", "TITLEJA", "TITLEJP", "TITLEKO", "TITLEKR",
+            "TITLECN", "TITLESC", "TITLECHS", "TITLEZH", "TITLEZHS",
+            "TITLETW", "TITLETC", "TITLECHT", "TITLEZHT",
+            "SUBTITLE", "SUBTITLEEN", "SUBTITLEUS", "SUBTITLEJA", "SUBTITLEJP",
+            "SUBTITLEKO", "SUBTITLEKR", "SUBTITLECN", "SUBTITLESC", "SUBTITLECHS",
+            "SUBTITLEZH", "SUBTITLEZHS", "SUBTITLETW", "SUBTITLETC", "SUBTITLECHT",
+            "SUBTITLEZHT", "BPM", "WAVE", "OFFSET", "DEMOSTART", "GENRE",
         };
 
         static readonly string[] HEADER_COURSE = new string[]
@@ -292,6 +298,13 @@ namespace TaikoSoundEditor.Commons.IO
             return c;
         }
 
+
+        private static string NormalizeSubtitle(string value)
+        {
+            value ??= string.Empty;
+            return value.StartsWith("--", StringComparison.Ordinal) ? value.Substring(2) : value;
+        }
+
         public void Parse(string[] lines)
         {
             Logger.Info($"Parse start");
@@ -314,10 +327,34 @@ namespace TaikoSoundEditor.Commons.IO
 
                     if (parsed.Name == "TITLE")
                         headers.Title = parsed.Value;
-                    if (parsed.Name == "TITLEJA")
+                    if (parsed.Name == "TITLEEN" || parsed.Name == "TITLEUS")
+                        headers.TitleEn = parsed.Value;
+                    if (parsed.Name == "TITLEJA" || parsed.Name == "TITLEJP")
                         headers.TitleJa = parsed.Value;
+                    if (parsed.Name == "TITLEKO" || parsed.Name == "TITLEKR")
+                        headers.TitleKo = parsed.Value;
+                    if (parsed.Name == "TITLECN" || parsed.Name == "TITLESC" ||
+                        parsed.Name == "TITLECHS" || parsed.Name == "TITLEZH" ||
+                        parsed.Name == "TITLEZHS")
+                        headers.TitleChineseSimplified = parsed.Value;
+                    if (parsed.Name == "TITLETW" || parsed.Name == "TITLETC" ||
+                        parsed.Name == "TITLECHT" || parsed.Name == "TITLEZHT")
+                        headers.TitleChineseTraditional = parsed.Value;
                     if (parsed.Name == "SUBTITLE")
-                        headers.Subtitle = parsed.Value.StartsWith("--") ? parsed.Value.Substring(2) : parsed.Value;
+                        headers.Subtitle = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLEEN" || parsed.Name == "SUBTITLEUS")
+                        headers.SubtitleEn = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLEJA" || parsed.Name == "SUBTITLEJP")
+                        headers.SubtitleJa = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLEKO" || parsed.Name == "SUBTITLEKR")
+                        headers.SubtitleKo = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLECN" || parsed.Name == "SUBTITLESC" ||
+                        parsed.Name == "SUBTITLECHS" || parsed.Name == "SUBTITLEZH" ||
+                        parsed.Name == "SUBTITLEZHS")
+                        headers.SubtitleChineseSimplified = NormalizeSubtitle(parsed.Value);
+                    if (parsed.Name == "SUBTITLETW" || parsed.Name == "SUBTITLETC" ||
+                        parsed.Name == "SUBTITLECHT" || parsed.Name == "SUBTITLEZHT")
+                        headers.SubtitleChineseTraditional = NormalizeSubtitle(parsed.Value);
                     if (parsed.Name == "BPM")
                         headers.Bpm = Number.ParseFloat(parsed.Value);
                     if (parsed.Name == "WAVE")
@@ -434,8 +471,17 @@ namespace TaikoSoundEditor.Commons.IO
         public class Header
         {
             public string Title { get; set; } = "";
-            public string Subtitle { get; set; } = "";
+            public string TitleEn { get; set; } = "";
             public string TitleJa { get; set; } = "";
+            public string TitleKo { get; set; } = "";
+            public string TitleChineseSimplified { get; set; } = "";
+            public string TitleChineseTraditional { get; set; } = "";
+            public string Subtitle { get; set; } = "";
+            public string SubtitleEn { get; set; } = "";
+            public string SubtitleJa { get; set; } = "";
+            public string SubtitleKo { get; set; } = "";
+            public string SubtitleChineseSimplified { get; set; } = "";
+            public string SubtitleChineseTraditional { get; set; } = "";
             public float Bpm { get; set; } = 120;
             public string Wave { get; set; } = "";
             public float Offset { get; set; } = 0;

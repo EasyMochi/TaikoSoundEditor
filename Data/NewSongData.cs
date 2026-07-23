@@ -35,6 +35,13 @@ namespace TaikoSoundEditor.Data
         public IWord WordSub { get; set; }
         public IWord WordDetail { get; set; }
 
+        // Lossless multilingual versions of the three wordlist rows. These are staged
+        // beside the typed IWord objects so language fields not present in an older
+        // datatable definition still survive project export.
+        public JsonObject WordRow { get; set; }
+        public JsonObject WordSubRow { get; set; }
+        public JsonObject WordDetailRow { get; set; }
+
         public JsonObject MusicAiSection { get; set; }
         public JsonObject MusicUsbSetting { get; set; }
 

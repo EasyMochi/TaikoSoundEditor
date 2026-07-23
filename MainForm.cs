@@ -230,6 +230,7 @@ namespace TaikoSoundEditor
             WordList.Items.Remove(ns.Word);
             WordList.Items.Remove(ns.WordDetail);
             WordList.Items.Remove(ns.WordSub);
+            RemoveImportedWordRows(ns.Id);
             MusicAttributes.Items.Remove(ns.MusicAttribute);
         }
 
