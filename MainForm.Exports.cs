@@ -95,7 +95,10 @@ namespace TaikoSoundEditor
                 void Save(string suffix, byte[] bytes)
                 {
                     if (UseEncryptionBox.Checked)
-                        bytes = SSL.EncryptFumen(bytes);
+                    {
+                        // Nijiiro fumens are gzip-wrapped before AES-CBC encryption.
+                        bytes = SSL.EncryptFumen(GZ.CompressToBytes(bytes));
+                    }
                     File.WriteAllBytes(Path.Combine(songDirectory, $"{ns.Id}_{suffix}.bin"), bytes);
                 }
 

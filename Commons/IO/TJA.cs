@@ -574,7 +574,65 @@ namespace TaikoSoundEditor.Commons.IO
                 }                
             }
 
+            // The bundled converter currently emits Hard/Oni judgement windows for
+            // every course. Normalize each generated chart to Nijiiro's per-course
+            // timing windows before it is staged or exported.
+            char[] generatedDifficulties = { 'e', 'h', 'm', 'n', 'x' };
+            for (int i = 0; i < result.Count; i++)
+                ApplyTimingWindows(result[i], generatedDifficulties[i % generatedDifficulties.Length]);
+
             return result;
+        }
+
+        private static void ApplyTimingWindows(byte[] fumen, char difficulty)
+        {
+            if (fumen == null || fumen.Length == 0) return;
+            if (fumen.Length < 520)
+                throw new InvalidDataException("tja2fumen produced a fumen smaller than its 520-byte header.");
+
+            float good;
+            float ok;
+            float bad;
+            switch (difficulty)
+            {
+                case 'e':
+                case 'n':
+                    good = 41.7083358764648f;
+                    ok = 108.441665649414f;
+                    bad = 125.125f;
+                    break;
+                case 'h':
+                case 'm':
+                case 'x':
+                    good = 25.0250015258789f;
+                    ok = 75.075004577637f;
+                    bad = 108.441665649414f;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(difficulty), difficulty,
+                        "Unknown fumen difficulty suffix.");
+            }
+
+            // tja2fumen writes little-endian fumens, but retain big-endian support
+            // because some official/legacy fumens use the opposite byte order.
+            uint measureCountLittle = BitConverter.ToUInt32(fumen, 512);
+            uint measureCountBig = ((uint)fumen[512] << 24) | ((uint)fumen[513] << 16) |
+                                   ((uint)fumen[514] << 8) | fumen[515];
+            bool bigEndian = measureCountBig < measureCountLittle;
+
+            for (int i = 0; i < 36; i++)
+            {
+                WriteFumenFloat(fumen, (i * 3 + 0) * 4, good, bigEndian);
+                WriteFumenFloat(fumen, (i * 3 + 1) * 4, ok, bigEndian);
+                WriteFumenFloat(fumen, (i * 3 + 2) * 4, bad, bigEndian);
+            }
+        }
+
+        private static void WriteFumenFloat(byte[] data, int offset, float value, bool bigEndian)
+        {
+            var bytes = BitConverter.GetBytes(value);
+            if (BitConverter.IsLittleEndian == bigEndian) Array.Reverse(bytes);
+            Buffer.BlockCopy(bytes, 0, data, offset, bytes.Length);
         }
 
         public override string ToString() => $"{Headers}\n{string.Join("\n", Courses)}";

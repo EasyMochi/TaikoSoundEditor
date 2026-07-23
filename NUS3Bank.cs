@@ -1,4 +1,4 @@
-﻿using System.Drawing.Text;
+using System.Drawing.Text;
 using System.IO;
 using System.Linq;
 using TaikoSoundEditor.Commons.Utils;
@@ -29,7 +29,8 @@ namespace TaikoSoundEditor
                 var header = Resources.song_ABCDEF_nus3bank.ToArray();
 
 
-                Write32(header, 0x4, (uint)idsp.Length);
+                // NUS3 stores the complete file size minus the initial 8-byte magic/size pair.
+                Write32(header, 0x4, checked((uint)(header.Length + idsp.Length - 8)));
                 for (int i = 0; i < songId.Length; i++)
                 {
                     header[0xAA + i] = (byte)songId[i];
@@ -49,7 +50,6 @@ namespace TaikoSoundEditor
                 Write32(header, 0x4C, (uint)idsp.Length);
                 Write32(header, 0x628, (uint)idsp.Length);
                 Write32(header, 0x74C, (uint)idsp.Length);
-                Write32(header, 0x4, (uint)idsp.Length);
 
                 uint bb = (uint)(demostart * 1000);
 

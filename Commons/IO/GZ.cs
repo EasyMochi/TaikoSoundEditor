@@ -35,10 +35,14 @@ namespace TaikoSoundEditor.Commons.IO
             return output.ToArray();
         }
 
-        public static byte[] CompressToBytes(string content)
+        public static byte[] CompressToBytes(string content) =>
+            CompressToBytes(Encoding.UTF8.GetBytes(content));
+
+        public static byte[] CompressToBytes(byte[] uncompressed)
         {
             Logger.Info("GZ Compressing bytes");
-            var uncompressed = Encoding.UTF8.GetBytes(content);
+            if (uncompressed == null) throw new System.ArgumentNullException(nameof(uncompressed));
+
             using var output = new MemoryStream();
             using (var gzip = new GZipStream(output, CompressionLevel.Optimal, leaveOpen: true))
                 gzip.Write(uncompressed, 0, uncompressed.Length);
