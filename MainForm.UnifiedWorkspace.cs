@@ -74,6 +74,7 @@ namespace TaikoSoundEditor
             BuildUnifiedLandingPage();
             BuildUnifiedImportPage();
             BuildUnifiedWorkspacePage();
+            InitializeSimpleAttributeControls();
             InitializeMultilingualWordEditor();
             HookUnifiedWorkspaceEvents();
             ResetUnifiedStagedState();
@@ -351,8 +352,11 @@ namespace TaikoSoundEditor
 
         private void MarkCurrentUnifiedSongEdited()
         {
-            if (LoadedMusicBox.SelectedItem is not IMusicInfo info) return;
-            unifiedEditedSongIds.Add(info.Id);
+            if (LoadedMusicBox.SelectedItem is IMusicInfo info)
+                unifiedEditedSongIds.Add(info.Id);
+            else if (NewSoundsBox.SelectedItem is not NewSongData)
+                return;
+
             unifiedExportIsCurrent = false;
             RefreshUnifiedSongList();
             UpdateUnifiedWorkspaceState();

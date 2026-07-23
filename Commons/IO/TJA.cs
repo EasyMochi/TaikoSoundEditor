@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -60,7 +60,7 @@ namespace TaikoSoundEditor.Commons.IO
                 line = line.Substring(0, match.Index).Trim();
             }            
 
-            if ((match = line.Match("^([A-Z]+):(.+)", "i")) != null)
+            if ((match = line.Match("^([A-Z]+):(.*)", "i")) != null)
             {
                 var nameUpper = match.Groups[1].Value.ToUpper();
                 var value = match.Groups[2].Value;
@@ -190,6 +190,8 @@ namespace TaikoSoundEditor.Commons.IO
                                 measureEvents.Add(new MeasureEvent("scroll", measureData.Length, Number.ParseFloat(line.Value)));
                             else if (line.Name == "BPMCHANGE")
                                 measureEvents.Add(new MeasureEvent("bpm", measureData.Length, Number.ParseFloat(line.Value)));
+                            else if (line.Name == "DELAY")
+                                measureEvents.Add(new MeasureEvent("delay", measureData.Length, Number.ParseFloat(line.Value)));
                             else if (line.Name == "TTBREAK")
                                 measureProperties["ttBreak"] = true;
                             else if (line.Name == "LEVELHOLD")
@@ -206,7 +208,8 @@ namespace TaikoSoundEditor.Commons.IO
                     if (data.EndsWith(","))
                     {
                         measureData += data.Substring(0, data.Length - 1);  //data.slice(0, -1);
-                        var measure = new Measure(new int[] { measureDividend, measureDivisor }, measureProperties, measureData, measureEvents.ToList());
+                        var measure = new Measure(new int[] { measureDividend, measureDivisor },
+                            new Dictionary<string, bool>(measureProperties), measureData, measureEvents.ToList());
                         measures.Add(measure);
                         measureData = "";
                         measureEvents.Clear();
@@ -215,27 +218,6 @@ namespace TaikoSoundEditor.Commons.IO
                     else measureData += data;
                 }
             } // foreach
-
-            if(measures.Count>0)
-            {
-                // Make first BPM event
-                var firstBPMEventFound = false;
-                for (var i = 0; i < measures[0].Events.Count; i++) 
-                {
-                    var evt = measures[0].Events[i];
-
-                    if (evt.Name == "bpm" && evt.Position == 0) 
-                    {
-                        firstBPMEventFound = true;
-                        break;
-                    }
-                }
-
-                if (!firstBPMEventFound)
-                {
-                    measures[0].Events = measures[0].Events.Prepend(new MeasureEvent("bmp", 0, tjaHeaders.Bpm)).ToList();
-                }
-            }
 
             // Helper values
             var course = 0;
@@ -254,18 +236,27 @@ namespace TaikoSoundEditor.Commons.IO
 
             Logger.Info($"Course difficulty =  {course}");
 
-            if (measureData!="" || measureData!=null)
+            if (!string.IsNullOrEmpty(measureData))
             {
-                measures.Add(new Measure(new int[] { measureDividend, measureDivisor }, measureProperties, measureData, measureEvents));
+                measures.Add(new Measure(new int[] { measureDividend, measureDivisor },
+                    new Dictionary<string, bool>(measureProperties), measureData, measureEvents.ToList()));
             }
-            else
+            else if (measureEvents.Count > 0 && measures.Count > 0)
             {
-                foreach(var ev in measureEvents)
+                foreach (var ev in measureEvents)
                 {
                     ev.Position = measures[measures.Count - 1].MeasureData.Length;
                     measures[measures.Count - 1].Events.Add(ev);
                 }
             }
+
+            if (measures.Count > 0 && !measures[0].Events.Any(evt =>
+                    string.Equals(evt.Name, "bpm", StringComparison.OrdinalIgnoreCase) && evt.Position == 0))
+            {
+                measures[0].Events = measures[0].Events
+                    .Prepend(new MeasureEvent("bpm", 0, tjaHeaders.Bpm)).ToList();
+            }
+
             var c = new Course(course, headers, measures) { HasBranches = hasBranches };
             Logger.Info($"Course created : {c}");
             return c;
@@ -369,7 +360,7 @@ namespace TaikoSoundEditor.Commons.IO
                 get
                 {
                     Debug.WriteLine(string.Join("", Measures.Select(_ => _.MeasureData)));
-                    return string.Join("", Measures.Select(_ => _.MeasureData)).Where(c => "1234".Contains(c)).Count();
+                    return string.Join("", Measures.Select(_ => _.MeasureData)).Count(c => "1234AB".Contains(c));
                 }
                 //get => Converted.Notes.Where(n => typeNote.Contains(n.Type)).Count();            
             }
@@ -523,7 +514,7 @@ namespace TaikoSoundEditor.Commons.IO
             for (int m = 0; m < course.Measures.Count; m++)
             {
                 var measure = course.Measures[m];
-                float length = measure.Length[0] / measure.Length[1] * 4;
+                float length = measure.Length[1] == 0 ? 4f : (float)measure.Length[0] / measure.Length[1] * 4f;
                 for (int e = 0; e < measure.Events.Count; e++)
                 {
                     var evt = measure.Events[e];

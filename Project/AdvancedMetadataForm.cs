@@ -41,7 +41,8 @@ namespace TaikoSoundEditor.Project
             songBox.SelectedIndexChanged += (_, _) => LoadSelectedSong();
 
             var choices = this.songs.Select(song => new SongChoice(song)).ToArray();
-            songBox.DataSource = choices;
+            if (choices.Length > 0)
+                songBox.Items.AddRange(choices.Cast<object>().ToArray());
 
             var grid = new TableLayoutPanel
             {
@@ -85,7 +86,7 @@ namespace TaikoSoundEditor.Project
                 AutoSize = true
             };
             var close = new Button { Text = "Close", AutoSize = true, DialogResult = DialogResult.OK };
-            var save = new Button { Text = "Save song", AutoSize = true };
+            var save = new Button { Text = "Save song", AutoSize = true, Enabled = choices.Length > 0 };
             save.Click += (_, _) => SaveSelectedSong();
             buttons.Controls.Add(close);
             buttons.Controls.Add(save);
@@ -96,7 +97,14 @@ namespace TaikoSoundEditor.Project
             CancelButton = close;
 
             if (choices.Length > 0)
+            {
                 songBox.SelectedIndex = 0;
+            }
+            else
+            {
+                songBox.Enabled = false;
+                songBox.Text = "No songs with a valid unique ID";
+            }
         }
 
         private static NumericUpDown CreateCountBox() => new NumericUpDown

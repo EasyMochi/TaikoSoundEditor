@@ -49,10 +49,10 @@ namespace TaikoSoundEditor
             multilingualWordGroup = new GroupBox
             {
                 Text = "All languages",
-                Location = new Point(6, 140),
+                Location = new Point(6, 214),
                 Size = new Size(
                     Math.Max(320, SoundViewerSimple.ClientSize.Width - 12),
-                    Math.Max(150, SoundViewerSimple.ClientSize.Height - 146)),
+                    Math.Max(150, SoundViewerSimple.ClientSize.Height - 220)),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
 

@@ -88,6 +88,7 @@ namespace TaikoSoundEditor
                 SimpleStarManiaBox.Value = item.StarMania;
                 SimpleStarUraBox.Value = item.StarUra;
                 SimpleStarUraBox.Enabled = attribute?.CanPlayUra == true;
+                LoadSimpleAttributeControls(attribute);
             }
             finally
             {
@@ -129,6 +130,7 @@ namespace TaikoSoundEditor
                 SimpleStarManiaBox.Value = item.MusicInfo?.StarMania ?? 0;
                 SimpleStarUraBox.Value = item.MusicInfo?.StarUra ?? 0;
                 SimpleStarUraBox.Enabled = item.MusicAttribute?.CanPlayUra == true;
+                LoadSimpleAttributeControls(item.MusicAttribute);
             }
             finally
             {
@@ -161,6 +163,7 @@ namespace TaikoSoundEditor
                 SimpleStarManiaBox.Value = 0;
                 SimpleStarUraBox.Value = 0;
                 SimpleStarUraBox.Enabled = false;
+                LoadSimpleAttributeControls(null);
             }
             finally
             {
