@@ -28,8 +28,8 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      - name: Restore dependencies
-        run: dotnet restore TaikoSoundEditor.csproj
+      - name: Restore Windows x64 dependencies
+        run: dotnet restore TaikoSoundEditor.csproj --runtime win-x64
 
       - name: Publish self-contained application
         shell: pwsh
