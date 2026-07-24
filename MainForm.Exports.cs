@@ -183,10 +183,15 @@ namespace TaikoSoundEditor
             builder.AppendLine($"  Applied repairs: {GetUnifiedAppliedRepairCount()}");
             builder.AppendLine($"  Repaired songs: {GetUnifiedRepairedSongIds().Count}");
             builder.AppendLine($"  Category/order changes: {(GetUnifiedCategoryChangesStaged() ? "yes" : "no")}");
+            builder.AppendLine($"  Event-folder changes: {(unifiedEventFolderChangesStaged ? "yes" : "no")}");
             builder.AppendLine($"  Pending song deletions: {CurrentProject.DeletedSongIds.Count}");
             builder.AppendLine();
             builder.AppendLine("OUTPUT");
-            builder.AppendLine("  All six datatables will be written losslessly.");
+            builder.AppendLine($"  All {CurrentProject.Datatables.Count} loaded datatables will be written losslessly.");
+            if (CurrentProject.HasGenreFolderInfo)
+                builder.AppendLine("  genre_folderinfo.bin is included in the client datatables.");
+            if (EventFolderData != null)
+                builder.AppendLine("  Server event-folder data will be written as JSON, GZip and Brotli under server/.");
             builder.AppendLine($"  New sound banks: {AddedMusic.Count}");
             builder.AppendLine($"  New fumen directories: {AddedMusic.Count}");
             builder.AppendLine("  Pending deletions are applied only inside the staged output.");
@@ -210,10 +215,12 @@ namespace TaikoSoundEditor
             if (confirmation != DialogResult.OK) return;
 
             MergeEditableDatatables();
+            EventFolderProjectValidator.ValidateForExport(CurrentProject);
             ProjectExporter.Export(CurrentProject, path, output =>
             {
                 ExportSoundBinaries(output.Fumen);
                 ExportNusBanks(output.Sound);
+                EventFolderData?.WriteAll(Path.Combine(output.Root, "server"));
             });
 
             MarkUnifiedExportComplete(path);

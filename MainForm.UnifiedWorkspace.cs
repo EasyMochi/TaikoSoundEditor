@@ -13,6 +13,7 @@ namespace TaikoSoundEditor
         private bool unifiedWorkspaceInitialized;
         private bool unifiedSelectionChanging;
         private bool unifiedCategoryChangesStaged;
+        private bool unifiedEventFolderChangesStaged;
         private bool unifiedExportIsCurrent;
         private int unifiedAppliedRepairCount;
         private string unifiedLastExportPath;
@@ -31,6 +32,7 @@ namespace TaikoSoundEditor
         private Button unifiedMetadataButton;
         private Button unifiedAdvancedButton;
         private Button unifiedCategoriesButton;
+        private Button unifiedEventFoldersButton;
         private Button unifiedAiUsbButton;
         private Button unifiedDeleteButton;
         private Button unifiedDiagnosticsButton;
@@ -126,7 +128,7 @@ namespace TaikoSoundEditor
             content.Controls.Add(groupBox2, 0, 2);
             content.Controls.Add(groupBox12, 0, 3);
             content.Controls.Add(groupBox13, 0, 4);
-            content.Controls.Add(BodyText("All six datatables are loaded losslessly. Unknown fields are preserved, and opening a project never repairs or normalizes it automatically."), 0, 5);
+            content.Controls.Add(BodyText("The six core datatables and optional genre_folderinfo.bin are loaded losslessly. Unknown fields are preserved, and opening a project never repairs or normalizes it automatically."), 0, 5);
             content.Controls.Add(RightButtons(OkButton), 0, 6);
 
             var frame = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 3, RowCount = 1 };
@@ -257,6 +259,7 @@ namespace TaikoSoundEditor
             unifiedMetadataButton = ActionButton("Edit metadata");
             unifiedAdvancedButton = ActionButton("Advanced fields");
             unifiedCategoriesButton = ActionButton("Edit categories...");
+            unifiedEventFoldersButton = ActionButton("Event folders...");
             unifiedAiUsbButton = ActionButton("AI / USB metadata...");
             unifiedDeleteButton = ActionButton("Delete song...");
             unifiedDiagnosticsButton = ActionButton("Diagnostics...");
@@ -268,18 +271,19 @@ namespace TaikoSoundEditor
             unifiedMetadataButton.Click += (_, _) => SoundViewTab.SelectedTab = SoundViewerSimple;
             unifiedAdvancedButton.Click += (_, _) => SoundViewTab.SelectedTab = SoundViewerExpert;
             unifiedCategoriesButton.Click += (_, _) => CategoriesToolStripMenuItem_Click(this, EventArgs.Empty);
+            unifiedEventFoldersButton.Click += (_, _) => EventFoldersToolStripMenuItem_Click(this, EventArgs.Empty);
             unifiedAiUsbButton.Click += (_, _) => AdvancedMetadataToolStripMenuItem_Click(this, EventArgs.Empty);
             unifiedDeleteButton.Click += (_, _) => DeleteSongToolStripMenuItem_Click(this, EventArgs.Empty);
             unifiedDiagnosticsButton.Click += (_, _) => DiagnosticsToolStripMenuItem_Click(this, EventArgs.Empty);
             unifiedRepairsButton.Click += (_, _) => RepairsToolStripMenuItem_Click(this, EventArgs.Empty);
             unifiedExportButton.Click += (_, _) => ExportAllButton_Click(this, EventArgs.Empty);
 
-            var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 12, Padding = new Padding(6) };
+            var panel = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 13, Padding = new Padding(6) };
             panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-            for (var i = 0; i < 10; i++) panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 43));
+            for (var i = 0; i < 11; i++) panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 43));
             panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
             panel.Controls.Add(Heading("Actions"), 0, 0);
-            var buttons = new[] { unifiedImportButton, unifiedBatchImportButton, unifiedMetadataButton, unifiedAdvancedButton, unifiedCategoriesButton, unifiedAiUsbButton, unifiedDeleteButton, unifiedDiagnosticsButton, unifiedRepairsButton, unifiedExportButton };
+            var buttons = new[] { unifiedImportButton, unifiedBatchImportButton, unifiedMetadataButton, unifiedAdvancedButton, unifiedCategoriesButton, unifiedEventFoldersButton, unifiedAiUsbButton, unifiedDeleteButton, unifiedDiagnosticsButton, unifiedRepairsButton, unifiedExportButton };
             for (var i = 0; i < buttons.Length; i++) panel.Controls.Add(buttons[i], 0, i + 1);
             return panel;
         }
@@ -292,6 +296,7 @@ namespace TaikoSoundEditor
             project.DropDownItems.Add(new ToolStripSeparator());
             project.DropDownItems.Add(MenuItem("Diagnostics...", () => DiagnosticsToolStripMenuItem_Click(this, EventArgs.Empty)));
             project.DropDownItems.Add(MenuItem("Repairs...", () => RepairsToolStripMenuItem_Click(this, EventArgs.Empty)));
+            project.DropDownItems.Add(MenuItem("Event folders...", () => EventFoldersToolStripMenuItem_Click(this, EventArgs.Empty)));
             project.DropDownItems.Add(new ToolStripSeparator());
             project.DropDownItems.Add(MenuItem("Validated export...", () => ExportAllButton_Click(this, EventArgs.Empty)));
             project.DropDownItems.Add(new ToolStripSeparator());
@@ -557,6 +562,7 @@ namespace TaikoSoundEditor
                 $"Deleted {CurrentProject?.DeletedSongIds.Count ?? 0}"
             };
             if (unifiedCategoryChangesStaged) status.Add("Categories changed");
+            if (unifiedEventFolderChangesStaged) status.Add("Event folders changed");
             if (unifiedExportIsCurrent && !string.IsNullOrWhiteSpace(unifiedLastExportPath)) status.Add("Exported");
             unifiedChangesStatus.Text = string.Join("  ·  ", status);
 
@@ -564,6 +570,7 @@ namespace TaikoSoundEditor
             unifiedMetadataButton.Enabled = hasSong;
             unifiedAdvancedButton.Enabled = hasSong;
             unifiedCategoriesButton.Enabled = loaded;
+            unifiedEventFoldersButton.Enabled = loaded;
             unifiedAiUsbButton.Enabled = loaded;
             unifiedDeleteButton.Enabled = loaded;
             unifiedDiagnosticsButton.Enabled = loaded;
@@ -577,6 +584,7 @@ namespace TaikoSoundEditor
             unifiedRepairedSongIds.Clear();
             unifiedAppliedRepairCount = 0;
             unifiedCategoryChangesStaged = false;
+            unifiedEventFolderChangesStaged = false;
             unifiedExportIsCurrent = false;
             unifiedLastExportPath = null;
             RefreshUnifiedSongList();
@@ -594,6 +602,12 @@ namespace TaikoSoundEditor
         private void MarkUnifiedCategoriesStaged()
         {
             unifiedCategoryChangesStaged = true;
+            NotifyUnifiedProjectStateChanged();
+        }
+
+        private void MarkUnifiedEventFoldersStaged()
+        {
+            unifiedEventFolderChangesStaged = true;
             NotifyUnifiedProjectStateChanged();
         }
 
@@ -617,7 +631,8 @@ namespace TaikoSoundEditor
         private bool GetUnifiedCategoryChangesStaged() => unifiedCategoryChangesStaged;
 
         private bool HasUnifiedStagedChanges() => AddedMusic.Count > 0 || unifiedEditedSongIds.Count > 0 ||
-            unifiedAppliedRepairCount > 0 || unifiedCategoryChangesStaged || (CurrentProject?.DeletedSongIds.Count ?? 0) > 0;
+            unifiedAppliedRepairCount > 0 || unifiedCategoryChangesStaged || unifiedEventFolderChangesStaged ||
+            (CurrentProject?.DeletedSongIds.Count ?? 0) > 0;
 
         private void ReturnToUnifiedLandingPage()
         {

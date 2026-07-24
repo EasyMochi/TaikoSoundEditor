@@ -37,6 +37,12 @@
             set => IniFile.Write("FumenKey", value);
         }
 
+        public static string EventFolderDataPath
+        {
+            get => IniFile.Read("EventFolderDataPath");
+            set => IniFile.Write("EventFolderDataPath", value ?? string.Empty);
+        }
+
         public static string DatatableKey
         {
             get => IniFile.Read("DatatableKey");
@@ -58,5 +64,5 @@
         public static string MusicOrderSortValueGenre = "Genre";
         public static string MusicOrderSortValueTitle = "Title";
         public static string MusicOrderSortValueNoSort = "None";
-    }    
+    }
 }

@@ -62,10 +62,11 @@ namespace TaikoSoundEditor.Project
 
         private static void EnsureSemanticDatatables(TaikoProject source, TaikoProject staged)
         {
-            foreach (var fileName in ProjectPaths.RequiredDatatables)
+            foreach (var pair in source.Datatables)
             {
-                if (!source.Datatables[fileName].SemanticallyEquals(staged.Datatables[fileName]))
-                    throw new InvalidDataException($"Staged {fileName} does not match the project data that was written.");
+                if (!staged.Datatables.TryGetValue(pair.Key, out var stagedDocument) ||
+                    !pair.Value.SemanticallyEquals(stagedDocument))
+                    throw new InvalidDataException($"Staged {pair.Key} does not match the project data that was written.");
             }
         }
 

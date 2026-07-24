@@ -28,6 +28,8 @@ namespace TaikoSoundEditor.Project
         public LosslessDatatableDocument MusicUsbSetting => Get("music_usbsetting.bin");
         public LosslessDatatableDocument MusicInfo => Get("musicinfo.bin");
         public LosslessDatatableDocument WordList => Get("wordlist.bin");
+        public LosslessDatatableDocument GenreFolderInfo => Get("genre_folderinfo.bin");
+        public bool HasGenreFolderInfo => HasDatatable("genre_folderinfo.bin");
 
         public static TaikoProject Open(string rootPath, bool encrypted)
         {
@@ -44,6 +46,13 @@ namespace TaikoSoundEditor.Project
                 project.datatables.Add(
                     fileName,
                     LosslessDatatableDocument.Load(paths.DatatableFile(fileName), encrypted));
+            }
+
+            foreach (var fileName in ProjectPaths.OptionalDatatables)
+            {
+                var path = paths.DatatableFile(fileName);
+                if (File.Exists(path))
+                    project.datatables.Add(fileName, LosslessDatatableDocument.Load(path, encrypted));
             }
 
             return project;
@@ -85,6 +94,12 @@ namespace TaikoSoundEditor.Project
             foreach (var pair in datatables)
                 pair.Value.Write(Path.Combine(datatableDirectory, pair.Key), IsEncrypted);
         }
+
+        public bool HasDatatable(string fileName) =>
+            !string.IsNullOrWhiteSpace(fileName) && datatables.ContainsKey(fileName);
+
+        public bool TryGetDatatable(string fileName, out LosslessDatatableDocument document) =>
+            datatables.TryGetValue(fileName, out document);
 
         private LosslessDatatableDocument Get(string fileName)
         {

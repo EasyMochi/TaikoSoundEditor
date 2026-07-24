@@ -76,6 +76,7 @@ namespace TaikoSoundEditor
             FumenChartStatistics.ClearCache();
 
             CurrentProject = TaikoProject.Open(DirSelector.Path, UseEncryptionBox.Checked);
+            EventFolderData = null;
             ResetMultilingualWordSchema();
             AddedMusic.Clear();
             ImportedAdvancedMetadataIds.Clear();

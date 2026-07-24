@@ -16,6 +16,11 @@ namespace TaikoSoundEditor.Project
             "wordlist.bin"
         };
 
+        public static readonly string[] OptionalDatatables =
+        {
+            "genre_folderinfo.bin"
+        };
+
         public ProjectPaths(string rootPath)
         {
             if (string.IsNullOrWhiteSpace(rootPath))

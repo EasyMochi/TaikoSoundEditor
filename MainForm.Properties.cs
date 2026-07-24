@@ -15,6 +15,7 @@ namespace TaikoSoundEditor
         private string WordListPath { get; set; }
 
         private TaikoProject CurrentProject { get; set; }
+        private EventFolderDataDocument EventFolderData { get; set; }
 
         private MusicAttributes MusicAttributes;
         private MusicOrders MusicOrders;
