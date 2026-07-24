@@ -1,0 +1,76 @@
+name: Build Windows Application
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Publish Windows x64
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore TaikoSoundEditor.csproj
+
+      - name: Publish self-contained application
+        shell: pwsh
+        run: |
+          dotnet publish TaikoSoundEditor.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --no-restore `
+            --output artifacts/publish `
+            -p:DebugType=None `
+            -p:DebugSymbols=false
+
+      - name: Verify executable
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD "artifacts/publish/TaikoSoundEditor.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Published executable was not created: $exe"
+          }
+
+      - name: Create distributable ZIP
+        shell: pwsh
+        run: |
+          $zip = Join-Path $PWD "artifacts/TaikoSoundEditor-win-x64.zip"
+          if (Test-Path $zip) {
+            Remove-Item $zip -Force
+          }
+          Compress-Archive -Path "artifacts/publish/*" -DestinationPath $zip -CompressionLevel Optimal
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TaikoSoundEditor-win-x64
+          path: artifacts/TaikoSoundEditor-win-x64.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Attach ZIP to GitHub release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/TaikoSoundEditor-win-x64.zip
+          generate_release_notes: true
